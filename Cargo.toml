@@ -1,0 +1,24 @@
+[package]
+name = "contamcheck"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Benchmark contamination auditor: n-gram overlap, echo-canary, and loss-delta probes with contamination-adjusted score tables."
+repository = "https://github.com/Intermountainh8ter/contamcheck"
+keywords = ["llm", "benchmark", "contamination", "audit", "evaluation"]
+categories = ["command-line-utilities", "science"]
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+sha2 = "0.10"
+
+[[bin]]
+name = "contamcheck"
+path = "src/main.rs"
+
+[lib]
+name = "contamcheck"
+path = "src/lib.rs"
