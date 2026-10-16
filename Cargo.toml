@@ -1,6 +1,7 @@
 [package]
 name = "contamcheck"
-version = "0.0.1"
+version = "0.1.0"
+authors = ["Intermountainh8ter"]
 edition = "2021"
 license = "MIT"
 description = "Benchmark contamination auditor: n-gram overlap, echo-canary, and loss-delta probes with contamination-adjusted score tables."
