@@ -28,16 +28,24 @@ the un-adjusted number.
   prefix divided by suffix length.
 - `loss_delta(original_loss, paraphrase_loss)` — positive when the model
   is specifically fluent on the original wording.
-- `flagged(mean, ci_lower, threshold)` — the per-benchmark flagging rule.
-- `contamcheck probe …` CLI reads one example and prints the three
-  per-example scores.
+- `flagged(mean, ci_lower, threshold)` — the per-probe flagging rule.
+- `bootstrap_mean_ci(values, iters, seed)` — percentile bootstrap over
+  per-example signals; NaN rows (e.g. echo-canary "n/a" on models that
+  refuse to continue) are dropped before resampling.
+- `aggregate(results, iters, seed, thresholds) -> BenchmarkReport` —
+  applies the pre-reg flagging rule to all three probes and emits a
+  per-benchmark verdict (any probe flag → contaminated).
+- `Thresholds::default()` returns the pre-registered table:
+  n-gram 0.05, echo-canary 0.3, loss-delta 0.2.
+- `contamcheck probe …` runs the three per-example probes on one
+  Example; `contamcheck aggregate <probes.jsonl>` reads the probe output
+  of a benchmark and prints the BenchmarkReport.
 - `docs/PREREGISTRATION.md` locks the thresholds.
 
 Not in this commit (openly tracked):
 
 - `contamcheck audit --model <endpoint> --benchmark <path>` end-to-end
   driver.
-- Bootstrap 95% CI aggregator over N examples.
 - Benchmark adapters: MMLU, GSM8K, MATH, HumanEval, HellaSwag.
 - A score-table rendering helper that produces the "published vs
   contamination-adjusted" comparison.
@@ -46,8 +54,11 @@ Not in this commit (openly tracked):
 
 ```sh
 cargo install --path .
+# per-example probe:
 contamcheck probe example.json proxy.txt model_output.txt suffix.txt \
-  --original-loss 0.5 --paraphrase-loss 2.0 --n 13
+  --original-loss 0.5 --paraphrase-loss 2.0 --n 13 > probes.jsonl
+# per-benchmark aggregate with the pre-registered flagging rule:
+contamcheck aggregate probes.jsonl
 ```
 
 ## License

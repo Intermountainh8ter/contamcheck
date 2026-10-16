@@ -1,12 +1,15 @@
 //! contamcheck CLI — scaffold.
 //!
-//! `probe` reads one `Example` from JSON plus the parameters of each
-//! probe and prints the per-example `ProbeResult`. The `audit`
-//! subcommand that drives a model endpoint across a benchmark and
-//! aggregates results is TODO.
+//! `probe` runs the three per-example probes on a single Example.
+//! `aggregate` reads a JSON Lines file of `ProbeResult` rows (as `probe`
+//! prints each one) and emits a `BenchmarkReport` with pre-registered
+//! bootstrap-CI flagging. The `audit` subcommand that drives a model
+//! endpoint across a benchmark end-to-end is TODO.
 
 use clap::{Parser, Subcommand};
-use contamcheck::{echo_canary_score, loss_delta, ngram_overlap, Example, ProbeResult};
+use contamcheck::{
+    aggregate, echo_canary_score, loss_delta, ngram_overlap, Example, ProbeResult, Thresholds,
+};
 
 #[derive(Parser)]
 #[command(
@@ -41,6 +44,26 @@ enum Cmd {
         #[arg(long, default_value_t = 13)]
         n: usize,
     },
+    /// Aggregate a JSON-Lines file of `ProbeResult` rows into a
+    /// `BenchmarkReport` with per-probe mean + 95% bootstrap CI and the
+    /// pre-registered flagging verdict.
+    Aggregate {
+        /// Path to a JSONL file of ProbeResult rows (one per line).
+        probes: std::path::PathBuf,
+        #[arg(long, default_value_t = 2000)]
+        bootstrap: usize,
+        #[arg(long, default_value_t = 1234)]
+        seed: u64,
+        /// Override the pre-registered n-gram threshold (default 0.05).
+        #[arg(long)]
+        ngram_threshold: Option<f64>,
+        /// Override the pre-registered echo-canary threshold (default 0.3).
+        #[arg(long)]
+        echo_threshold: Option<f64>,
+        /// Override the pre-registered loss-delta threshold (default 0.2).
+        #[arg(long)]
+        loss_delta_threshold: Option<f64>,
+    },
     /// Print the version banner and exit.
     Version,
 }
@@ -68,6 +91,34 @@ fn main() -> anyhow::Result<()> {
                 loss_delta: loss_delta(original_loss, paraphrase_loss),
             };
             println!("{}", serde_json::to_string_pretty(&r)?);
+        }
+        Cmd::Aggregate {
+            probes,
+            bootstrap,
+            seed,
+            ngram_threshold,
+            echo_threshold,
+            loss_delta_threshold,
+        } => {
+            let text = std::fs::read_to_string(&probes)?;
+            let mut rows: Vec<ProbeResult> = Vec::new();
+            for (line_no, line) in text.lines().enumerate() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let row: ProbeResult = serde_json::from_str(trimmed)
+                    .map_err(|e| anyhow::anyhow!("probes line {}: {e}", line_no + 1))?;
+                rows.push(row);
+            }
+            let defaults = Thresholds::default();
+            let t = Thresholds {
+                ngram: ngram_threshold.unwrap_or(defaults.ngram),
+                echo: echo_threshold.unwrap_or(defaults.echo),
+                loss_delta: loss_delta_threshold.unwrap_or(defaults.loss_delta),
+            };
+            let report = aggregate(&rows, bootstrap, seed, t);
+            println!("{}", serde_json::to_string_pretty(&report)?);
         }
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }

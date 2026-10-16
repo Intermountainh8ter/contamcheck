@@ -3,10 +3,13 @@
 //! This crate ships three probe primitives: n-gram overlap against a
 //! training-set proxy, echo-canary completion scoring, and loss-delta
 //! comparison between the original benchmark example and a semantic
-//! paraphrase. Each probe reports a per-example score and a per-benchmark
-//! aggregate with a 95% bootstrap CI (bootstrap arrives in the follow-up
-//! release; see `docs/PREREGISTRATION.md`).
+//! paraphrase. The per-benchmark aggregator reports mean + 95% percentile
+//! bootstrap CI per probe and applies the pre-registered flagging rule
+//! (mean > threshold AND CI lower bound > 0); see
+//! `docs/PREREGISTRATION.md`.
 
+use rand::SeedableRng;
+use rand_pcg::Pcg64Mcg;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -92,6 +95,118 @@ pub fn flagged(mean: f64, ci_lower: f64, threshold: f64) -> bool {
     mean > threshold && ci_lower > 0.0
 }
 
+/// Pre-registered thresholds for the three probes. Mirrors the table
+/// in `docs/PREREGISTRATION.md` §3; override at the CLI level only
+/// (and the override lands as a new report row, never a replacement).
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct Thresholds {
+    pub ngram: f64,
+    pub echo: f64,
+    pub loss_delta: f64,
+}
+
+impl Default for Thresholds {
+    fn default() -> Self {
+        Self {
+            ngram: 0.05,
+            echo: 0.3,
+            loss_delta: 0.2,
+        }
+    }
+}
+
+/// Per-probe aggregate: mean, 95% percentile-bootstrap CI, pre-reg flag.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProbeAggregate {
+    pub n: usize,
+    pub mean: f64,
+    pub ci_lo: f64,
+    pub ci_hi: f64,
+    pub threshold: f64,
+    pub flagged: bool,
+}
+
+/// One benchmark's full aggregate across all three probes and a model
+/// verdict (any probe flag -> contaminated).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BenchmarkReport {
+    pub ngram: ProbeAggregate,
+    pub echo: ProbeAggregate,
+    pub loss_delta: ProbeAggregate,
+    /// A model is **contaminated on this benchmark** when any of the
+    /// three probes flags it (pre-reg §3, "one flag is the finding").
+    pub contaminated: bool,
+}
+
+/// Percentile bootstrap of the mean of a vector of per-example signals.
+///
+/// NaN values are treated as "n/a" and dropped before resampling (used
+/// by the echo-canary probe for models that refuse to continue, per
+/// pre-reg §6). Returns (n, mean, lo, hi) where n is the kept count.
+pub fn bootstrap_mean_ci(values: &[f64], iters: usize, seed: u64) -> (usize, f64, f64, f64) {
+    let kept: Vec<f64> = values.iter().copied().filter(|v| !v.is_nan()).collect();
+    let n = kept.len();
+    if n == 0 {
+        return (0, f64::NAN, f64::NAN, f64::NAN);
+    }
+    let mean = kept.iter().sum::<f64>() / n as f64;
+    if n == 1 || iters < 2 {
+        return (n, mean, mean, mean);
+    }
+    let mut rng = Pcg64Mcg::seed_from_u64(seed);
+    let mut sample = Vec::with_capacity(n);
+    let mut means = Vec::with_capacity(iters);
+    for _ in 0..iters {
+        sample.clear();
+        for _ in 0..n {
+            let k = (rand::Rng::gen::<u32>(&mut rng) as usize) % n;
+            sample.push(kept[k]);
+        }
+        means.push(sample.iter().sum::<f64>() / n as f64);
+    }
+    means.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let lo = means[(iters as f64 * 0.025).floor() as usize];
+    let hi = means[((iters as f64 * 0.975).ceil() as usize).min(iters - 1)];
+    (n, mean, lo, hi)
+}
+
+/// Aggregate per-example probe results into a per-benchmark report with
+/// the pre-registered flagging verdict applied.
+pub fn aggregate(
+    results: &[ProbeResult],
+    iters: usize,
+    seed: u64,
+    t: Thresholds,
+) -> BenchmarkReport {
+    let probe =
+        |values: &[f64], threshold: f64, probe_seed: u64| -> ProbeAggregate {
+            let (n, mean, ci_lo, ci_hi) = bootstrap_mean_ci(values, iters, probe_seed);
+            ProbeAggregate {
+                n,
+                mean,
+                ci_lo,
+                ci_hi,
+                threshold,
+                flagged: !mean.is_nan() && flagged(mean, ci_lo, threshold),
+            }
+        };
+    let ngs: Vec<f64> = results.iter().map(|r| r.ngram_overlap).collect();
+    let ecs: Vec<f64> = results.iter().map(|r| r.echo_canary).collect();
+    let lds: Vec<f64> = results.iter().map(|r| r.loss_delta).collect();
+    // Deterministic per-probe sub-seeds so swapping one probe's input
+    // does not reshuffle the others.
+    let ngram = probe(&ngs, t.ngram, seed);
+    let echo = probe(&ecs, t.echo, seed.wrapping_add(1));
+    let loss_delta = probe(&lds, t.loss_delta, seed.wrapping_add(2));
+    let contaminated = ngram.flagged || echo.flagged || loss_delta.flagged;
+    BenchmarkReport {
+        ngram,
+        echo,
+        loss_delta,
+        contaminated,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,5 +243,107 @@ mod tests {
         assert!(flagged(0.4, 0.1, 0.3));
         assert!(!flagged(0.4, -0.01, 0.3)); // CI crosses zero
         assert!(!flagged(0.2, 0.1, 0.3)); // mean below threshold
+    }
+
+    fn probe(id: &str, ng: f64, ec: f64, ld: f64) -> ProbeResult {
+        ProbeResult {
+            id: id.into(),
+            ngram_overlap: ng,
+            echo_canary: ec,
+            loss_delta: ld,
+        }
+    }
+
+    #[test]
+    fn bootstrap_mean_ci_point_estimate_inside_interval() {
+        let v: Vec<f64> = (1..=40).map(|i| i as f64 / 40.0).collect();
+        let (n, mean, lo, hi) = bootstrap_mean_ci(&v, 2000, 1234);
+        assert_eq!(n, 40);
+        assert!(lo <= mean && mean <= hi, "lo={lo} mean={mean} hi={hi}");
+        assert!(hi - lo < 0.3);
+    }
+
+    #[test]
+    fn bootstrap_mean_ci_drops_nan() {
+        let v = vec![1.0, f64::NAN, 1.0, 1.0, f64::NAN];
+        let (n, mean, lo, hi) = bootstrap_mean_ci(&v, 500, 42);
+        assert_eq!(n, 3);
+        assert_eq!(mean, 1.0);
+        assert_eq!(lo, 1.0);
+        assert_eq!(hi, 1.0);
+    }
+
+    #[test]
+    fn bootstrap_mean_ci_all_nan_returns_nan() {
+        let v = vec![f64::NAN, f64::NAN];
+        let (n, mean, _, _) = bootstrap_mean_ci(&v, 100, 1);
+        assert_eq!(n, 0);
+        assert!(mean.is_nan());
+    }
+
+    #[test]
+    fn bootstrap_mean_ci_deterministic_under_seed() {
+        let v = vec![0.1, 0.9, 0.3, 0.5, 0.7, 0.2, 0.8, 0.4, 0.6];
+        let a = bootstrap_mean_ci(&v, 500, 7);
+        let b = bootstrap_mean_ci(&v, 500, 7);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn aggregate_flags_contamination_when_any_probe_flags() {
+        // Build a benchmark where only loss_delta is above threshold.
+        let rs: Vec<ProbeResult> = (0..40)
+            .map(|i| probe(&i.to_string(), 0.01, 0.05, 0.8))
+            .collect();
+        let r = aggregate(&rs, 500, 1234, Thresholds::default());
+        assert!(!r.ngram.flagged);
+        assert!(!r.echo.flagged);
+        assert!(r.loss_delta.flagged, "loss_delta mean 0.8 > 0.2 and CI tight");
+        assert!(r.contaminated);
+    }
+
+    #[test]
+    fn aggregate_does_not_flag_when_ci_crosses_zero() {
+        // Mean right at threshold but with a wide spread so the CI
+        // lower bound is below zero -> no flag.
+        let rs: Vec<ProbeResult> = (0..20)
+            .map(|i| probe(&i.to_string(), if i < 10 { 1.0 } else { -0.9 }, 0.0, 0.0))
+            .collect();
+        let r = aggregate(&rs, 2000, 1234, Thresholds::default());
+        assert!(!r.ngram.flagged, "wide bounds: {:?}", r.ngram);
+        assert!(!r.contaminated);
+    }
+
+    #[test]
+    fn aggregate_echo_canary_na_rows_are_dropped() {
+        let rs: Vec<ProbeResult> = (0..30)
+            .map(|i| {
+                let ec = if i < 10 { f64::NAN } else { 0.9 };
+                probe(&i.to_string(), 0.0, ec, 0.0)
+            })
+            .collect();
+        let r = aggregate(&rs, 500, 1234, Thresholds::default());
+        assert_eq!(r.echo.n, 20);
+        assert!((r.echo.mean - 0.9).abs() < 1e-12);
+        assert!(r.echo.flagged);
+    }
+
+    #[test]
+    fn aggregate_is_deterministic_under_seed() {
+        let rs: Vec<ProbeResult> = (0..25)
+            .map(|i| {
+                probe(
+                    &i.to_string(),
+                    (i as f64) / 25.0,
+                    (i as f64) / 50.0,
+                    (i as f64) / 100.0,
+                )
+            })
+            .collect();
+        let a = aggregate(&rs, 500, 42, Thresholds::default());
+        let b = aggregate(&rs, 500, 42, Thresholds::default());
+        assert_eq!(a.ngram.ci_lo, b.ngram.ci_lo);
+        assert_eq!(a.echo.ci_hi, b.echo.ci_hi);
+        assert_eq!(a.loss_delta.mean, b.loss_delta.mean);
     }
 }
