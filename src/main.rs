@@ -73,6 +73,22 @@ enum Cmd {
         #[arg(long, default_value_t = 0.05)]
         alpha: f64,
     },
+    /// Batch n-gram probe over a benchmark JSONL and a proxy text file.
+    /// Emits a ProbeResult JSONL (one row per example) suitable to pipe
+    /// into `aggregate`. The echo_canary and loss_delta fields are left
+    /// at 0.0 (no live model required) — this subcommand is the pure-
+    /// compute probe that does not need an endpoint. Combine with `probe`
+    /// per-example results for the full picture.
+    NgramRun {
+        /// Benchmark JSONL: one `Example` per line.
+        benchmark: std::path::PathBuf,
+        /// Training-set proxy text file.
+        proxy: std::path::PathBuf,
+        /// Output path for the ProbeResult JSONL.
+        out: std::path::PathBuf,
+        #[arg(long, default_value_t = 13)]
+        n: usize,
+    },
     /// Print the version banner and exit.
     Version,
 }
@@ -138,6 +154,42 @@ fn main() -> anyhow::Result<()> {
             if !any_rejected {
                 std::process::exit(1);
             }
+        }
+        Cmd::NgramRun {
+            benchmark,
+            proxy,
+            out,
+            n,
+        } => {
+            let proxy_text = std::fs::read_to_string(&proxy)?;
+            let bench_text = std::fs::read_to_string(&benchmark)?;
+            let mut lines_written = 0usize;
+            let mut out_text = String::new();
+            for (line_no, line) in bench_text.lines().enumerate() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let ex: Example = serde_json::from_str(trimmed).map_err(|e| {
+                    anyhow::anyhow!("benchmark line {}: {e}", line_no + 1)
+                })?;
+                let r = ProbeResult {
+                    id: ex.id.clone(),
+                    ngram_overlap: ngram_overlap(&ex.reference, &proxy_text, n),
+                    echo_canary: 0.0,
+                    loss_delta: 0.0,
+                };
+                out_text.push_str(&serde_json::to_string(&r)?);
+                out_text.push('\n');
+                lines_written += 1;
+            }
+            std::fs::write(&out, out_text)?;
+            eprintln!(
+                "wrote {} probe rows to {} (n={})",
+                lines_written,
+                out.display(),
+                n
+            );
         }
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }
