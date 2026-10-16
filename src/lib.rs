@@ -207,6 +207,103 @@ pub fn aggregate(
     }
 }
 
+/// One (model, benchmark) pair's bootstrap p-value for a single probe,
+/// before any multiple-comparison correction. Pre-reg §4: "Across
+/// models for the same benchmark, we use Holm-Bonferroni within a
+/// probe family." The p is the one-sided bootstrap tail probability
+/// that the probe's resampled mean sits at or below zero (i.e. that
+/// the probe is NOT in the contaminated direction).
+///
+/// We approximate the pre-reg's "CI lower bound > 0" rule by its
+/// bootstrap-p equivalent: the fraction of bootstrap means that is
+/// ≤ 0. A probe whose mean is well above zero with a tight CI gets a
+/// very small p; a probe whose CI brackets zero gets p near 0.5.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ModelProbePValue {
+    pub model: String,
+    pub p_value: f64,
+}
+
+/// Compute the one-sided bootstrap tail p-value for a probe's per-example
+/// signals: `P(resampled_mean <= 0)` under the empirical distribution.
+pub fn bootstrap_tail_p(values: &[f64], iters: usize, seed: u64) -> f64 {
+    use rand::Rng;
+    let kept: Vec<f64> = values.iter().copied().filter(|v| !v.is_nan()).collect();
+    let n = kept.len();
+    if n == 0 || iters < 2 {
+        return f64::NAN;
+    }
+    let mut rng = Pcg64Mcg::seed_from_u64(seed);
+    let mut below_or_zero = 0usize;
+    for _ in 0..iters {
+        let mut acc = 0.0;
+        for _ in 0..n {
+            let k = (rng.gen::<u32>() as usize) % n;
+            acc += kept[k];
+        }
+        let m = acc / n as f64;
+        if m <= 0.0 {
+            below_or_zero += 1;
+        }
+    }
+    below_or_zero as f64 / iters as f64
+}
+
+/// Holm-Bonferroni adjusted decisions across a set of models on one
+/// probe. Each input pair carries a raw p-value; the output carries the
+/// adjusted p and the family-wise reject flag at `alpha`. Pre-reg §4.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct HolmDecision {
+    pub model: String,
+    pub raw_p: f64,
+    pub adjusted_p: f64,
+    pub rejected: bool,
+}
+
+pub fn holm_bonferroni(input: &[ModelProbePValue], alpha: f64) -> Vec<HolmDecision> {
+    let m = input.len();
+    if m == 0 {
+        return Vec::new();
+    }
+    // Sort by raw p ascending, remembering original indices.
+    let mut idx: Vec<usize> = (0..m).collect();
+    idx.sort_by(|a, b| {
+        input[*a]
+            .p_value
+            .partial_cmp(&input[*b].p_value)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let mut adjusted = vec![0.0; m];
+    let mut rejected = vec![false; m];
+    // Holm's step-down: adjusted p_(k) = max over i<=k of (m - i + 1) * p_(i),
+    // clamped to [0, 1]; reject while adjusted p_(k) < alpha and no
+    // earlier non-rejection has occurred.
+    let mut running_max = 0.0f64;
+    let mut rejected_so_far = true;
+    for (rank, &sorted_i) in idx.iter().enumerate() {
+        let scale = (m - rank) as f64;
+        let adj = (scale * input[sorted_i].p_value).min(1.0).max(running_max);
+        running_max = adj;
+        adjusted[sorted_i] = adj;
+        if rejected_so_far && adj < alpha {
+            rejected[sorted_i] = true;
+        } else {
+            rejected_so_far = false;
+            rejected[sorted_i] = false;
+        }
+    }
+    input
+        .iter()
+        .enumerate()
+        .map(|(i, p)| HolmDecision {
+            model: p.model.clone(),
+            raw_p: p.p_value,
+            adjusted_p: adjusted[i],
+            rejected: rejected[i],
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -345,5 +442,56 @@ mod tests {
         assert_eq!(a.ngram.ci_lo, b.ngram.ci_lo);
         assert_eq!(a.echo.ci_hi, b.echo.ci_hi);
         assert_eq!(a.loss_delta.mean, b.loss_delta.mean);
+    }
+
+    #[test]
+    fn bootstrap_tail_p_small_for_strong_signal() {
+        let v = vec![0.5f64; 50];
+        let p = bootstrap_tail_p(&v, 500, 1);
+        assert!(p < 0.01, "p={p}");
+    }
+
+    #[test]
+    fn bootstrap_tail_p_near_half_when_signals_center_on_zero() {
+        let v: Vec<f64> = (0..100).map(|i| (i as f64 - 49.5) / 50.0).collect();
+        let p = bootstrap_tail_p(&v, 500, 1);
+        assert!(0.3 < p && p < 0.7, "p={p}");
+    }
+
+    #[test]
+    fn holm_rejects_strongly_contaminated_models() {
+        let input = vec![
+            ModelProbePValue { model: "A".into(), p_value: 0.001 },
+            ModelProbePValue { model: "B".into(), p_value: 0.01 },
+            ModelProbePValue { model: "C".into(), p_value: 0.6 },
+        ];
+        let out = holm_bonferroni(&input, 0.05);
+        // A: 0.001 * 3 = 0.003 < 0.05 -> reject
+        // B: 0.01 * 2 = 0.02 < 0.05 -> reject
+        // C: 0.6 * 1 = 0.6 > 0.05 -> keep
+        assert!(out.iter().find(|d| d.model == "A").unwrap().rejected);
+        assert!(out.iter().find(|d| d.model == "B").unwrap().rejected);
+        assert!(!out.iter().find(|d| d.model == "C").unwrap().rejected);
+    }
+
+    #[test]
+    fn holm_stops_rejecting_after_first_non_reject() {
+        // Rank 1 fails to reject -> every later rank must also not reject,
+        // even if its adjusted p is < alpha.
+        let input = vec![
+            ModelProbePValue { model: "A".into(), p_value: 0.04 }, // *3 = 0.12 > 0.05
+            ModelProbePValue { model: "B".into(), p_value: 0.045 }, // *2 = 0.09 > 0.05
+            ModelProbePValue { model: "C".into(), p_value: 0.046 }, // *1 = 0.046 < 0.05
+        ];
+        let out = holm_bonferroni(&input, 0.05);
+        assert!(!out.iter().find(|d| d.model == "A").unwrap().rejected);
+        assert!(!out.iter().find(|d| d.model == "B").unwrap().rejected);
+        assert!(!out.iter().find(|d| d.model == "C").unwrap().rejected,
+            "Holm's step-down halts after first non-reject");
+    }
+
+    #[test]
+    fn holm_empty_input_returns_empty() {
+        assert_eq!(holm_bonferroni(&[], 0.05).len(), 0);
     }
 }

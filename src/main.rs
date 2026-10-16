@@ -8,7 +8,8 @@
 
 use clap::{Parser, Subcommand};
 use contamcheck::{
-    aggregate, echo_canary_score, loss_delta, ngram_overlap, Example, ProbeResult, Thresholds,
+    aggregate, echo_canary_score, holm_bonferroni, loss_delta, ngram_overlap, Example,
+    ModelProbePValue, ProbeResult, Thresholds,
 };
 
 #[derive(Parser)]
@@ -63,6 +64,14 @@ enum Cmd {
         /// Override the pre-registered loss-delta threshold (default 0.2).
         #[arg(long)]
         loss_delta_threshold: Option<f64>,
+    },
+    /// Apply Holm-Bonferroni across models for one probe (pre-reg §4).
+    /// Input: a JSON array of {model, p_value}. Prints the decisions
+    /// JSON. Exit code 0 if any model is rejected, 1 otherwise.
+    Holm {
+        input: std::path::PathBuf,
+        #[arg(long, default_value_t = 0.05)]
+        alpha: f64,
     },
     /// Print the version banner and exit.
     Version,
@@ -119,6 +128,16 @@ fn main() -> anyhow::Result<()> {
             };
             let report = aggregate(&rows, bootstrap, seed, t);
             println!("{}", serde_json::to_string_pretty(&report)?);
+        }
+        Cmd::Holm { input, alpha } => {
+            let rows: Vec<ModelProbePValue> =
+                serde_json::from_str(&std::fs::read_to_string(&input)?)?;
+            let decisions = holm_bonferroni(&rows, alpha);
+            let any_rejected = decisions.iter().any(|d| d.rejected);
+            println!("{}", serde_json::to_string_pretty(&decisions)?);
+            if !any_rejected {
+                std::process::exit(1);
+            }
         }
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }
