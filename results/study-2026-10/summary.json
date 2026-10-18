@@ -2,11 +2,33 @@
   "cells": [
     {
       "benchmark": "gsm8k",
+      "echo_ci_hi": 0.058896243241920346,
+      "echo_ci_lo": 0.027850659747548957,
+      "echo_flagged": false,
+      "echo_mean": 0.042175369194682254,
+      "echo_n": 300,
+      "echo_na": 0,
+      "echo_verdict_allowed": true,
+      "model": "gemma-2-9b-it"
+    },
+    {
+      "benchmark": "gsm8k",
       "echo_ci_hi": 0.05705430630028727,
       "echo_ci_lo": 0.026207742484395006,
       "echo_flagged": false,
       "echo_mean": 0.040142179922029626,
       "echo_n": 300,
+      "echo_na": 0,
+      "echo_verdict_allowed": true,
+      "model": "llama-3.1-8b-instruct"
+    },
+    {
+      "benchmark": "humaneval",
+      "echo_ci_hi": 0.06220152441193257,
+      "echo_ci_lo": 0.014086595327708342,
+      "echo_flagged": false,
+      "echo_mean": 0.03544403692618336,
+      "echo_n": 164,
       "echo_na": 0,
       "echo_verdict_allowed": true,
       "model": "llama-3.1-8b-instruct"
@@ -35,7 +57,7 @@
     }
   ],
   "h1_gsm8k_loss_delta_flag": "not evaluated: no loss-delta cells yet",
-  "h2_humaneval_echo_flag": "not supported: no model flagged (1 cells)",
+  "h2_humaneval_echo_flag": "not supported: no model flagged (2 cells)",
   "h3_ordering": "pending: needs the published GSM8K scores with sources recorded in this file before it is read",
   "ngram_probe": "not applicable for every cell: no public training-set proxy exists for these models (study §Probes 3)",
   "paraphraser": "gemma-2-9b-it",

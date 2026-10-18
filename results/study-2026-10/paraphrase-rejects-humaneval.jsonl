@@ -1,0 +1,22 @@
+{"id":"HumanEval/8","reason":"length outside 0.7x-1.3x","tokens_original":47,"tokens_paraphrase":30}
+{"id":"HumanEval/11","reason":"length outside 0.7x-1.3x","tokens_original":55,"tokens_paraphrase":74}
+{"id":"HumanEval/13","reason":"length outside 0.7x-1.3x","tokens_original":20,"tokens_paraphrase":28}
+{"id":"HumanEval/16","reason":"length outside 0.7x-1.3x","tokens_original":11,"tokens_paraphrase":6}
+{"id":"HumanEval/19","reason":"shares a 13-gram with the original","tokens_original":121,"tokens_paraphrase":115}
+{"id":"HumanEval/23","reason":"length outside 0.7x-1.3x","tokens_original":7,"tokens_paraphrase":3}
+{"id":"HumanEval/28","reason":"length outside 0.7x-1.3x","tokens_original":8,"tokens_paraphrase":5}
+{"id":"HumanEval/34","reason":"length outside 0.7x-1.3x","tokens_original":11,"tokens_paraphrase":7}
+{"id":"HumanEval/38","reason":"length outside 0.7x-1.3x","tokens_original":13,"tokens_paraphrase":8}
+{"id":"HumanEval/39","reason":"shares a 13-gram with the original","tokens_original":133,"tokens_paraphrase":119}
+{"id":"HumanEval/41","reason":"length outside 0.7x-1.3x","tokens_original":6,"tokens_paraphrase":4}
+{"id":"HumanEval/47","reason":"length outside 0.7x-1.3x","tokens_original":72,"tokens_paraphrase":36}
+{"id":"HumanEval/51","reason":"length outside 0.7x-1.3x","tokens_original":34,"tokens_paraphrase":19}
+{"id":"HumanEval/71","reason":"length outside 0.7x-1.3x","tokens_original":84,"tokens_paraphrase":54}
+{"id":"HumanEval/99","reason":"shares a 13-gram with the original","tokens_original":127,"tokens_paraphrase":109}
+{"id":"HumanEval/105","reason":"shares a 13-gram with the original","tokens_original":130,"tokens_paraphrase":117}
+{"id":"HumanEval/123","reason":"shares a 13-gram with the original","tokens_original":107,"tokens_paraphrase":94}
+{"id":"HumanEval/124","reason":"shares a 13-gram with the original","tokens_original":167,"tokens_paraphrase":165}
+{"id":"HumanEval/126","reason":"shares a 13-gram with the original","tokens_original":102,"tokens_paraphrase":93}
+{"id":"HumanEval/144","reason":"length outside 0.7x-1.3x","tokens_original":68,"tokens_paraphrase":89}
+{"id":"HumanEval/148","reason":"shares a 13-gram with the original","tokens_original":151,"tokens_paraphrase":128}
+{"id":"HumanEval/156","reason":"shares a 13-gram with the original","tokens_original":180,"tokens_paraphrase":201}

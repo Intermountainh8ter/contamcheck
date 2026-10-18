@@ -72,13 +72,15 @@ Pre-registered in `docs/STUDY-local-models-2026-10.md` (four Q8_0 models, GSM8K 
 <!-- CONTAM:START -->
 | Model | Benchmark | Echo canary mean [95% CI] (n, n/a) | Echo flag (>0.3, CI lo >0) | Loss delta (nats/token) [95% CI over chunks] | Loss flag (>0.2, CI lo >0) |
 |---|---|---|---|---|---|
+| gemma-2-9b-it | gsm8k | 0.042 [0.028, 0.059] (300, 0) | not flagged | not run | — |
 | llama-3.1-8b-instruct | gsm8k | 0.040 [0.026, 0.057] (300, 0) | not flagged | not run | — |
+| llama-3.1-8b-instruct | humaneval | 0.035 [0.014, 0.062] (164, 0) | not flagged | not run | — |
 | qwen3-8b-stock | gsm8k | 0.033 [0.020, 0.047] (300, 0) | not flagged | not run | — |
 | qwen3-8b-stock | humaneval | 0.034 [0.013, 0.060] (164, 0) | not flagged | not run | — |
 
 | Pre-registered hypothesis | Verdict |
 |---|---|
 | H1 some model flagged on GSM8K by loss delta | not evaluated: no loss-delta cells yet |
-| H2 some model flagged on HumanEval by echo canary | not supported: no model flagged (1 cells) |
+| H2 some model flagged on HumanEval by echo canary | not supported: no model flagged (2 cells) |
 | H3 ordering | pending: needs the published GSM8K scores with sources recorded in this file before it is read |
 <!-- CONTAM:END -->
