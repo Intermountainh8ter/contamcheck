@@ -115,6 +115,28 @@ enum Cmd {
     /// `held_out`. Writes one JSON row per item: id, echo_canary (or null when
     /// the model returned nothing), continuation length. Continuations are not
     /// written anywhere.
+    /// Paraphrase runner (study §Probes 2): send each `text` from a `*.paraphrase-requests.jsonl`
+    /// to a chat-completions endpoint with the fixed instruction at temperature 0; accept a paraphrase
+    /// only if its token count is within 0.7x-1.3x of the original (counted by the server's
+    /// /tokenize) and it shares no 13-gram of words with the original. Writes accepted paraphrases
+    /// with hashes, and a rejects file with reasons. Paraphrases are not harmful content and may be
+    /// committed.
+    ParaphraseRun {
+        #[arg(long)]
+        endpoint: String,
+        #[arg(long)]
+        model: String,
+        #[arg(long)]
+        inputs: std::path::PathBuf,
+        #[arg(long)]
+        out: std::path::PathBuf,
+        #[arg(long)]
+        rejects_out: std::path::PathBuf,
+        #[arg(long, default_value_t = 512)]
+        max_tokens: u32,
+        #[arg(long)]
+        limit: Option<usize>,
+    },
     EchoRun {
         /// Base URL, e.g. http://127.0.0.1:8099 (no trailing /v1).
         #[arg(long)]
@@ -171,6 +193,65 @@ fn echo_run(endpoint: &str, model: &str, inputs: &std::path::Path, out: &std::pa
     }
     std::fs::write(out, rows)?;
     eprintln!("echo-run: {n} items, {n_na} n/a, written to {}", out.display());
+    Ok(())
+}
+
+
+const PARAPHRASE_INSTRUCTION: &str = "rewrite in different words, same meaning, same length";
+
+fn word_13grams(s: &str) -> std::collections::HashSet<Vec<String>> {
+    let w: Vec<String> = s.split_whitespace().map(|x| x.to_lowercase()).collect();
+    let mut set = std::collections::HashSet::new();
+    if w.len() >= 13 { for i in 0..=w.len() - 13 { set.insert(w[i..i + 13].to_vec()); } }
+    set
+}
+
+fn count_tokens(agent: &ureq::Agent, endpoint: &str, text: &str) -> anyhow::Result<usize> {
+    let resp: serde_json::Value = agent.post(&format!("{}/tokenize", endpoint.trim_end_matches('/'))).set("Content-Type", "application/json").send_string(&serde_json::json!({"content": text}).to_string())?.into_json()?;
+    Ok(resp["tokens"].as_array().map(|a| a.len()).unwrap_or(0))
+}
+
+fn paraphrase_run(endpoint: &str, model: &str, inputs: &std::path::Path, out: &std::path::Path, rejects_out: &std::path::Path, max_tokens: u32, limit: Option<usize>) -> anyhow::Result<()> {
+    let text = std::fs::read_to_string(inputs)?;
+    let agent = ureq::AgentBuilder::new().timeout(std::time::Duration::from_secs(300)).build();
+    let url = format!("{}/v1/chat/completions", endpoint.trim_end_matches('/'));
+    let (mut accepted, mut rejects) = (String::new(), String::new());
+    let (mut n, mut n_acc) = (0usize, 0usize);
+    let mut reasons: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        if limit.is_some_and(|l| n >= l) { break; }
+        let item: serde_json::Value = serde_json::from_str(line)?;
+        let id = item["id"].as_str().unwrap_or("?").to_string();
+        let original = item["text"].as_str().unwrap_or("").to_string();
+        let body = serde_json::json!({
+            "model": model, "temperature": 0.0, "top_p": 1.0, "seed": 42, "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": format!("{PARAPHRASE_INSTRUCTION}. Reply with the rewritten text only.\n\n{original}")}]
+        });
+        let resp: serde_json::Value = agent.post(&url).set("Content-Type", "application/json").send_string(&body.to_string())?.into_json()?;
+        let para = resp["choices"][0]["message"]["content"].as_str().unwrap_or("").trim().to_string();
+        let n_orig = count_tokens(&agent, endpoint, &original)?;
+        let n_para = count_tokens(&agent, endpoint, &para)?;
+        let ratio = if n_orig == 0 { 0.0 } else { n_para as f64 / n_orig as f64 };
+        let shared = !word_13grams(&original).is_disjoint(&word_13grams(&para));
+        let reason = if para.is_empty() { Some("empty") } else if !(0.7..=1.3).contains(&ratio) { Some("length outside 0.7x-1.3x") } else if shared { Some("shares a 13-gram with the original") } else { None };
+        match reason {
+            None => {
+                n_acc += 1;
+                accepted.push_str(&serde_json::to_string(&serde_json::json!({"id": id, "paraphrase": para, "paraphrase_sha256": sha256_hex(para.as_bytes()), "original_sha256": sha256_hex(original.as_bytes()), "tokens_original": n_orig, "tokens_paraphrase": n_para, "paraphraser": model, "instruction": PARAPHRASE_INSTRUCTION}))?);
+                accepted.push('\n');
+            }
+            Some(r) => {
+                *reasons.entry(r.to_string()).or_insert(0) += 1;
+                rejects.push_str(&serde_json::to_string(&serde_json::json!({"id": id, "reason": r, "tokens_original": n_orig, "tokens_paraphrase": n_para}))?);
+                rejects.push('\n');
+            }
+        }
+        n += 1;
+        if n % 25 == 0 { eprintln!("{n} items, {n_acc} accepted"); }
+    }
+    std::fs::write(out, accepted)?;
+    std::fs::write(rejects_out, rejects)?;
+    eprintln!("paraphrase-run: {n} items, {n_acc} accepted, rejected {reasons:?}");
     Ok(())
 }
 
@@ -390,6 +471,7 @@ fn main() -> anyhow::Result<()> {
         }
         Cmd::Prepare { gsm8k, humaneval, out, sample, seed } => prepare(&gsm8k, &humaneval, &out, sample, seed)?,
         Cmd::EchoRun { endpoint, model, inputs, out, max_tokens, limit } => echo_run(&endpoint, &model, &inputs, &out, max_tokens, limit)?,
+        Cmd::ParaphraseRun { endpoint, model, inputs, out, rejects_out, max_tokens, limit } => paraphrase_run(&endpoint, &model, &inputs, &out, &rejects_out, max_tokens, limit)?,
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }
     Ok(())
