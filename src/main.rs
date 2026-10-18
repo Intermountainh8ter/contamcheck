@@ -137,6 +137,49 @@ enum Cmd {
         #[arg(long)]
         limit: Option<usize>,
     },
+    /// Loss-delta runner (study §Probes 2) via `llama-perplexity`: builds two text files, the
+    /// original references and their accepted paraphrases (same items, same order, joined by blank
+    /// lines), scores both at the same context size, and reports mean per-token NLL of each and
+    /// their difference. Per-item NLL is not available from this stack (the server does not return
+    /// prompt log-probabilities), so the interval is a bootstrap over the perplexity tool's
+    /// fixed-size scored chunks, not over items; the result file says so.
+    LossRun {
+        #[arg(long)]
+        perplexity_bin: std::path::PathBuf,
+        #[arg(long)]
+        model_file: std::path::PathBuf,
+        #[arg(long)]
+        model: String,
+        /// `*.examples.jsonl` from `prepare` (id, prompt, reference).
+        #[arg(long)]
+        examples: std::path::PathBuf,
+        /// accepted paraphrases from `paraphrase-run`.
+        #[arg(long)]
+        paraphrases: std::path::PathBuf,
+        #[arg(long)]
+        out: std::path::PathBuf,
+        #[arg(long)]
+        scratch_dir: std::path::PathBuf,
+        #[arg(long, default_value_t = 256)]
+        ctx: u32,
+        #[arg(long, default_value = "0")]
+        gpu: String,
+    },
+    /// Summarize the study: per model and benchmark, echo-canary mean with CI over items and
+    /// loss delta with CI over chunks; pre-registered flags; H1-H3; README table between
+    /// `<!-- CONTAM:START -->` and `<!-- CONTAM:END -->`.
+    StudySummarize {
+        /// Directory with echo-<bench>-<model>.jsonl and loss-<bench>-<model>.json files.
+        #[arg(long)]
+        results: std::path::PathBuf,
+        #[arg(long)]
+        out: std::path::PathBuf,
+        #[arg(long)]
+        readme: Option<std::path::PathBuf>,
+        /// Model whose cell is excluded from the loss-delta headline because it wrote the paraphrases.
+        #[arg(long, default_value = "gemma-2-9b-it")]
+        paraphraser: String,
+    },
     EchoRun {
         /// Base URL, e.g. http://127.0.0.1:8099 (no trailing /v1).
         #[arg(long)]
@@ -196,6 +239,165 @@ fn echo_run(endpoint: &str, model: &str, inputs: &std::path::Path, out: &std::pa
     Ok(())
 }
 
+
+/// Run llama-perplexity once and return the per-chunk mean NLL (nats per scored token).
+/// Output type 1 prints, per chunk, the token offset, cumulative PPL, cumulative mean ln(PPL)
+/// and its standard error; each chunk scores the same number of tokens (ctx/2), so chunk i's
+/// mean NLL is i*c_i - (i-1)*c_{i-1}.
+fn perplexity_chunks(bin: &std::path::Path, model: &std::path::Path, file: &std::path::Path, ctx: u32, gpu: &str) -> anyhow::Result<(Vec<f64>, String)> {
+    let out = std::process::Command::new(bin)
+        .args(["-m", &model.display().to_string(), "-f", &file.display().to_string(), "-c", &ctx.to_string(), "-b", &ctx.to_string(), "-ngl", "99", "--ppl-output-type", "1"])
+        .env("HIP_VISIBLE_DEVICES", gpu)
+        .output()?;
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    anyhow::ensure!(out.status.success(), "llama-perplexity failed on {}: {}", file.display(), stderr.lines().rev().find(|l| l.contains(" E ")).unwrap_or(""));
+    let mut cum: Vec<f64> = Vec::new();
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let f: Vec<&str> = line.split_whitespace().collect();
+        if f.len() >= 3 {
+            if let (Ok(_off), Ok(c)) = (f[0].parse::<u64>(), f[2].parse::<f64>()) { cum.push(c); }
+        }
+    }
+    let mut per = Vec::with_capacity(cum.len());
+    for (i, c) in cum.iter().enumerate() {
+        let k = (i + 1) as f64;
+        let prev = if i == 0 { 0.0 } else { cum[i - 1] };
+        per.push(k * c - (k - 1.0) * prev);
+    }
+    let version = stderr.lines().find(|l| l.contains("build") || l.contains("version")).unwrap_or("").trim().to_string();
+    Ok((per, version))
+}
+
+fn bootstrap_diff_of_means(a: &[f64], b: &[f64], iters: usize, seed: u64) -> (f64, f64, f64) {
+    use rand::{Rng, SeedableRng};
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len().max(1) as f64;
+    let point = mean(a) - mean(b);
+    let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
+    let mut d = Vec::with_capacity(iters);
+    for _ in 0..iters {
+        let ra: Vec<f64> = (0..a.len()).map(|_| a[rng.gen_range(0..a.len())]).collect();
+        let rb: Vec<f64> = (0..b.len()).map(|_| b[rng.gen_range(0..b.len())]).collect();
+        d.push(mean(&ra) - mean(&rb));
+    }
+    d.sort_by(|x, y| x.total_cmp(y));
+    (point, d[(iters as f64 * 0.025) as usize], d[((iters as f64 * 0.975) as usize).min(iters - 1)])
+}
+
+#[allow(clippy::too_many_arguments)]
+fn loss_run(bin: &std::path::Path, model_file: &std::path::Path, model: &str, examples: &std::path::Path, paraphrases: &std::path::Path, out: &std::path::Path, scratch: &std::path::Path, ctx: u32, gpu: &str) -> anyhow::Result<()> {
+    std::fs::create_dir_all(scratch)?;
+    let mut refs: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    for line in std::fs::read_to_string(examples)?.lines().filter(|l| !l.trim().is_empty()) {
+        let v: serde_json::Value = serde_json::from_str(line)?;
+        refs.insert(v["id"].as_str().unwrap_or("").to_string(), v["reference"].as_str().unwrap_or("").to_string());
+    }
+    let mut orig = Vec::new();
+    let mut para = Vec::new();
+    let mut ids = Vec::new();
+    for line in std::fs::read_to_string(paraphrases)?.lines().filter(|l| !l.trim().is_empty()) {
+        let v: serde_json::Value = serde_json::from_str(line)?;
+        let id = v["id"].as_str().unwrap_or("").to_string();
+        if let Some(r) = refs.get(&id) {
+            orig.push(r.clone());
+            para.push(v["paraphrase"].as_str().unwrap_or("").to_string());
+            ids.push(id);
+        }
+    }
+    anyhow::ensure!(!ids.is_empty(), "no items with both a reference and an accepted paraphrase");
+    let bench = examples.file_name().map(|f| f.to_string_lossy().split('.').next().unwrap_or("bench").to_string()).unwrap_or("bench".into());
+    let of = scratch.join(format!("{bench}-{model}-original.txt"));
+    let pf = scratch.join(format!("{bench}-{model}-paraphrase.txt"));
+    std::fs::write(&of, orig.join("\n\n"))?;
+    std::fs::write(&pf, para.join("\n\n"))?;
+    eprintln!("loss-run {model} {bench}: {} items; scoring originals", ids.len());
+    let (nll_o, version) = perplexity_chunks(bin, model_file, &of, ctx, gpu)?;
+    eprintln!("  {} chunks; scoring paraphrases", nll_o.len());
+    let (nll_p, _) = perplexity_chunks(bin, model_file, &pf, ctx, gpu)?;
+    anyhow::ensure!(!nll_o.is_empty() && !nll_p.is_empty(), "perplexity produced no chunks (text shorter than the context?)");
+    let (delta, lo, hi) = bootstrap_diff_of_means(&nll_o, &nll_p, 2000, 42);
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
+    let res = serde_json::json!({
+        "tool": format!("contamcheck {}", env!("CARGO_PKG_VERSION")), "probe": "loss_delta", "model": model, "benchmark": bench,
+        "model_file": model_file.display().to_string(), "model_file_sha256": sha256_hex(&std::fs::read(model_file)?),
+        "perplexity_bin": bin.display().to_string(), "perplexity_version_line": version, "ctx": ctx, "scored_tokens_per_chunk": ctx / 2,
+        "n_items": ids.len(), "item_ids_sha256": sha256_hex(ids.join("\n").as_bytes()),
+        "original_text_sha256": sha256_hex(orig.join("\n\n").as_bytes()), "paraphrase_text_sha256": sha256_hex(para.join("\n\n").as_bytes()),
+        "n_chunks_original": nll_o.len(), "n_chunks_paraphrase": nll_p.len(),
+        "mean_nll_original": mean(&nll_o), "mean_nll_paraphrase": mean(&nll_p),
+        "loss_delta": delta, "ci_lo": lo, "ci_hi": hi,
+        "interval_unit": "bootstrap (2000, seed 42) over fixed-size scored chunks of the concatenated texts, not over items; per-item NLL is not available from this serving stack",
+        "per_chunk_nll_original": nll_o, "per_chunk_nll_paraphrase": nll_p,
+    });
+    std::fs::write(out, serde_json::to_string_pretty(&res)?)?;
+    eprintln!("loss-run {model} {bench}: NLL original {:.4} paraphrase {:.4} delta {:.4} [{:.4}, {:.4}]", mean(&nll_o), mean(&nll_p), delta, lo, hi);
+    Ok(())
+}
+
+fn study_summarize(results: &std::path::Path, out: &std::path::Path, readme: Option<&std::path::Path>, paraphraser: &str) -> anyhow::Result<()> {
+    let mut cells: std::collections::BTreeMap<(String, String), serde_json::Map<String, serde_json::Value>> = std::collections::BTreeMap::new();
+    for e in std::fs::read_dir(results)? {
+        let p = e?.path();
+        let name = p.file_name().unwrap().to_string_lossy().to_string();
+        if let Some(rest) = name.strip_prefix("echo-").and_then(|r| r.strip_suffix(".jsonl")) {
+            let (bench, model) = rest.split_once('-').ok_or_else(|| anyhow::anyhow!("bad name {name}"))?;
+            let mut vals = Vec::new();
+            let mut na = 0usize;
+            for line in std::fs::read_to_string(&p)?.lines().filter(|l| !l.trim().is_empty()) {
+                let v: serde_json::Value = serde_json::from_str(line)?;
+                match v["echo_canary"].as_f64() { Some(x) => vals.push(x), None => na += 1 }
+            }
+            let (n, mean, lo, hi) = contamcheck::bootstrap_mean_ci(&vals, 2000, 1234);
+            let c = cells.entry((model.to_string(), bench.to_string())).or_default();
+            c.insert("echo_n".into(), n.into()); c.insert("echo_na".into(), na.into());
+            c.insert("echo_mean".into(), mean.into()); c.insert("echo_ci_lo".into(), lo.into()); c.insert("echo_ci_hi".into(), hi.into());
+            c.insert("echo_flagged".into(), contamcheck::flagged(mean, lo, 0.3).into());
+            c.insert("echo_verdict_allowed".into(), (n >= 100).into());
+        } else if let Some(rest) = name.strip_prefix("loss-").and_then(|r| r.strip_suffix(".json")) {
+            let (bench, model) = rest.split_once('-').ok_or_else(|| anyhow::anyhow!("bad name {name}"))?;
+            let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&p)?)?;
+            let c = cells.entry((model.to_string(), bench.to_string())).or_default();
+            let (d, lo) = (v["loss_delta"].as_f64().unwrap_or(f64::NAN), v["ci_lo"].as_f64().unwrap_or(f64::NAN));
+            c.insert("loss_delta".into(), v["loss_delta"].clone()); c.insert("loss_ci_lo".into(), v["ci_lo"].clone()); c.insert("loss_ci_hi".into(), v["ci_hi"].clone());
+            c.insert("loss_n_items".into(), v["n_items"].clone()); c.insert("loss_n_chunks".into(), v["n_chunks_original"].clone());
+            c.insert("loss_flagged".into(), contamcheck::flagged(d, lo, 0.2).into());
+            c.insert("loss_headline_excluded".into(), (model == paraphraser).into());
+        }
+    }
+    // H1: any model flagged on gsm8k by loss delta (headline cells only). H2: any model flagged on humaneval by echo.
+    let h1: Vec<String> = cells.iter().filter(|((m, b), c)| b == "gsm8k" && m != paraphraser && c.get("loss_flagged").and_then(|x| x.as_bool()).unwrap_or(false)).map(|((m, _), _)| m.clone()).collect();
+    let h2: Vec<String> = cells.iter().filter(|((_, b), c)| b == "humaneval" && c.get("echo_flagged").and_then(|x| x.as_bool()).unwrap_or(false) && c.get("echo_verdict_allowed").and_then(|x| x.as_bool()).unwrap_or(false)).map(|((m, _), _)| m.clone()).collect();
+    let n_loss_gsm = cells.iter().filter(|((m, b), c)| b == "gsm8k" && m != paraphraser && c.contains_key("loss_delta")).count();
+    let n_echo_he = cells.iter().filter(|((_, b), c)| b == "humaneval" && c.contains_key("echo_mean")).count();
+    let rows: Vec<serde_json::Value> = cells.iter().map(|((m, b), c)| { let mut o = c.clone(); o.insert("model".into(), m.clone().into()); o.insert("benchmark".into(), b.clone().into()); serde_json::Value::Object(o) }).collect();
+    let summary = serde_json::json!({
+        "study": "docs/STUDY-local-models-2026-10.md", "tool": format!("contamcheck {}", env!("CARGO_PKG_VERSION")),
+        "cells": rows,
+        "h1_gsm8k_loss_delta_flag": if n_loss_gsm == 0 { "not evaluated: no loss-delta cells yet".to_string() } else if h1.is_empty() { format!("not supported: no model flagged ({n_loss_gsm} cells)") } else { format!("supported: flagged {}", h1.join(", ")) },
+        "h2_humaneval_echo_flag": if n_echo_he == 0 { "not evaluated: no echo cells yet".to_string() } else if h2.is_empty() { format!("not supported: no model flagged ({n_echo_he} cells)") } else { format!("supported: flagged {}", h2.join(", ")) },
+        "h3_ordering": "pending: needs the published GSM8K scores with sources recorded in this file before it is read",
+        "paraphraser": paraphraser,
+        "ngram_probe": "not applicable for every cell: no public training-set proxy exists for these models (study §Probes 3)",
+    });
+    std::fs::write(out, serde_json::to_string_pretty(&summary)?)?;
+    let mut t = String::from("| Model | Benchmark | Echo canary mean [95% CI] (n, n/a) | Echo flag (>0.3, CI lo >0) | Loss delta (nats/token) [95% CI over chunks] | Loss flag (>0.2, CI lo >0) |\n|---|---|---|---|---|---|\n");
+    for ((m, b), c) in &cells {
+        let g = |k: &str| c.get(k).and_then(|x| x.as_f64());
+        let echo = match (g("echo_mean"), g("echo_ci_lo"), g("echo_ci_hi")) { (Some(x), Some(lo), Some(hi)) => format!("{x:.3} [{lo:.3}, {hi:.3}] ({}, {})", c["echo_n"], c["echo_na"]), _ => "not run".into() };
+        let eflag = match c.get("echo_flagged") { Some(f) => if c.get("echo_verdict_allowed").and_then(|x| x.as_bool()).unwrap_or(false) { if f.as_bool().unwrap_or(false) { "flagged" } else { "not flagged" } } else { "no verdict (<100 items)" }, None => "—" };
+        let loss = match (g("loss_delta"), g("loss_ci_lo"), g("loss_ci_hi")) { (Some(x), Some(lo), Some(hi)) => format!("{x:+.4} [{lo:+.4}, {hi:+.4}] ({} items, {} chunks){}", c["loss_n_items"], c["loss_n_chunks"], if m == paraphraser { ", paraphraser: excluded from headline" } else { "" }), _ => "not run".into() };
+        let lflag = match c.get("loss_flagged") { Some(f) => if f.as_bool().unwrap_or(false) { "flagged" } else { "not flagged" }, None => "—" };
+        t.push_str(&format!("| {m} | {b} | {echo} | {eflag} | {loss} | {lflag} |\n"));
+    }
+    t.push_str(&format!("\n| Pre-registered hypothesis | Verdict |\n|---|---|\n| H1 some model flagged on GSM8K by loss delta | {} |\n| H2 some model flagged on HumanEval by echo canary | {} |\n| H3 ordering | {} |\n", summary["h1_gsm8k_loss_delta_flag"].as_str().unwrap(), summary["h2_humaneval_echo_flag"].as_str().unwrap(), summary["h3_ordering"].as_str().unwrap()));
+    print!("{t}");
+    if let Some(r) = readme {
+        const START: &str = "<!-- CONTAM:START -->"; const END: &str = "<!-- CONTAM:END -->";
+        let text = std::fs::read_to_string(r)?;
+        let (a, b) = (text.find(START).ok_or_else(|| anyhow::anyhow!("README missing {START}"))?, text.find(END).ok_or_else(|| anyhow::anyhow!("README missing {END}"))?);
+        std::fs::write(r, format!("{}{}\n{}{}", &text[..a], START, t, &text[b..]))?;
+    }
+    Ok(())
+}
 
 const PARAPHRASE_INSTRUCTION: &str = "rewrite in different words, same meaning, same length";
 
@@ -471,6 +673,8 @@ fn main() -> anyhow::Result<()> {
         }
         Cmd::Prepare { gsm8k, humaneval, out, sample, seed } => prepare(&gsm8k, &humaneval, &out, sample, seed)?,
         Cmd::EchoRun { endpoint, model, inputs, out, max_tokens, limit } => echo_run(&endpoint, &model, &inputs, &out, max_tokens, limit)?,
+        Cmd::LossRun { perplexity_bin, model_file, model, examples, paraphrases, out, scratch_dir, ctx, gpu } => loss_run(&perplexity_bin, &model_file, &model, &examples, &paraphrases, &out, &scratch_dir, ctx, &gpu)?,
+        Cmd::StudySummarize { results, out, readme, paraphraser } => study_summarize(&results, &out, readme.as_deref(), &paraphraser)?,
         Cmd::ParaphraseRun { endpoint, model, inputs, out, rejects_out, max_tokens, limit } => paraphrase_run(&endpoint, &model, &inputs, &out, &rejects_out, max_tokens, limit)?,
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }
