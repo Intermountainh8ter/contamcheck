@@ -58,7 +58,7 @@
   ],
   "h1_gsm8k_loss_delta_flag": "not evaluated: no loss-delta cells yet",
   "h2_humaneval_echo_flag": "not supported: no model flagged (2 cells)",
-  "h3_ordering": "pending: needs the published GSM8K scores with sources recorded in this file before it is read",
+  "h3_ordering": "not evaluated: 0 of 4 GSM8K loss-delta cells present",
   "ngram_probe": "not applicable for every cell: no public training-set proxy exists for these models (study §Probes 3)",
   "paraphraser": "gemma-2-9b-it",
   "study": "docs/STUDY-local-models-2026-10.md",

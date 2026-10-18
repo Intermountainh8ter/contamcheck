@@ -333,6 +333,22 @@ fn loss_run(bin: &std::path::Path, model_file: &std::path::Path, model: &str, ex
     Ok(())
 }
 
+/// H3: the model with the highest published GSM8K score has the highest GSM8K loss delta.
+/// Reads results/published-gsm8k.json; if the ordering is not decidable there, no verdict.
+fn h3_text(results: &std::path::Path, cells: &std::collections::BTreeMap<(String, String), serde_json::Map<String, serde_json::Value>>, paraphraser: &str) -> String {
+    let Ok(txt) = std::fs::read_to_string(results.join("published-gsm8k.json")) else { return "pending: results/published-gsm8k.json missing".into() };
+    let Ok(pubs) = serde_json::from_str::<serde_json::Value>(&txt) else { return "pending: published-gsm8k.json unreadable".into() };
+    let mut deltas: Vec<(String, f64)> = cells.iter().filter(|((_, b), c)| b == "gsm8k" && c.contains_key("loss_delta")).map(|((m, _), c)| (m.clone(), c["loss_delta"].as_f64().unwrap_or(f64::NAN))).collect();
+    if deltas.len() < 4 { return format!("not evaluated: {} of 4 GSM8K loss-delta cells present", deltas.len()); }
+    deltas.sort_by(|a, b| b.1.total_cmp(&a.1));
+    let ranking = deltas.iter().map(|(m, d)| format!("{m} {d:+.4}{}", if m == paraphraser { " (paraphraser)" } else { "" })).collect::<Vec<_>>().join(" > ");
+    if !pubs["ordering"]["decidable"].as_bool().unwrap_or(false) {
+        return format!("no verdict: the top published model is not separable ({}); loss-delta ranking: {ranking}", pubs["ordering"]["not_robust"].as_str().unwrap_or("?"));
+    }
+    let top = pubs["ordering"]["top_candidates"][0].as_str().unwrap_or("?");
+    if deltas[0].0 == top { format!("supported: {top} has the highest loss delta; ranking {ranking}") } else { format!("not supported: {top} is not first; ranking {ranking}") }
+}
+
 fn study_summarize(results: &std::path::Path, out: &std::path::Path, readme: Option<&std::path::Path>, paraphraser: &str) -> anyhow::Result<()> {
     let mut cells: std::collections::BTreeMap<(String, String), serde_json::Map<String, serde_json::Value>> = std::collections::BTreeMap::new();
     for e in std::fs::read_dir(results)? {
@@ -374,7 +390,7 @@ fn study_summarize(results: &std::path::Path, out: &std::path::Path, readme: Opt
         "cells": rows,
         "h1_gsm8k_loss_delta_flag": if n_loss_gsm == 0 { "not evaluated: no loss-delta cells yet".to_string() } else if h1.is_empty() { format!("not supported: no model flagged ({n_loss_gsm} cells)") } else { format!("supported: flagged {}", h1.join(", ")) },
         "h2_humaneval_echo_flag": if n_echo_he == 0 { "not evaluated: no echo cells yet".to_string() } else if h2.is_empty() { format!("not supported: no model flagged ({n_echo_he} cells)") } else { format!("supported: flagged {}", h2.join(", ")) },
-        "h3_ordering": "pending: needs the published GSM8K scores with sources recorded in this file before it is read",
+        "h3_ordering": h3_text(results, &cells, paraphraser),
         "paraphraser": paraphraser,
         "ngram_probe": "not applicable for every cell: no public training-set proxy exists for these models (study §Probes 3)",
     });

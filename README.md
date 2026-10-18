@@ -82,5 +82,5 @@ Pre-registered in `docs/STUDY-local-models-2026-10.md` (four Q8_0 models, GSM8K 
 |---|---|
 | H1 some model flagged on GSM8K by loss delta | not evaluated: no loss-delta cells yet |
 | H2 some model flagged on HumanEval by echo canary | not supported: no model flagged (2 cells) |
-| H3 ordering | pending: needs the published GSM8K scores with sources recorded in this file before it is read |
+| H3 ordering | not evaluated: 0 of 4 GSM8K loss-delta cells present |
 <!-- CONTAM:END -->
