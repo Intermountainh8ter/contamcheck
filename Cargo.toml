@@ -27,3 +27,9 @@ path = "src/main.rs"
 [lib]
 name = "contamcheck"
 path = "src/lib.rs"
+
+# sha256 of multi-GB model files is unusable in a debug build (~20 MB/s); optimise just the hasher.
+[profile.dev.package.sha2]
+opt-level = 3
+[profile.dev.package.sha2-asm]
+opt-level = 3
