@@ -109,8 +109,69 @@ enum Cmd {
         #[arg(long, default_value_t = 42)]
         seed: u64,
     },
+    /// Echo-canary runner: send each `prefix` from a `*.echo.jsonl` file to an
+    /// OpenAI-compatible `/v1/completions` endpoint at temperature 0 (raw
+    /// prompt, no chat template) and score the continuation against
+    /// `held_out`. Writes one JSON row per item: id, echo_canary (or null when
+    /// the model returned nothing), continuation length. Continuations are not
+    /// written anywhere.
+    EchoRun {
+        /// Base URL, e.g. http://127.0.0.1:8099 (no trailing /v1).
+        #[arg(long)]
+        endpoint: String,
+        #[arg(long)]
+        model: String,
+        /// `*.echo.jsonl` from `prepare`.
+        #[arg(long)]
+        inputs: std::path::PathBuf,
+        #[arg(long)]
+        out: std::path::PathBuf,
+        #[arg(long, default_value_t = 128)]
+        max_tokens: u32,
+        /// Stop after this many items (smoke tests).
+        #[arg(long)]
+        limit: Option<usize>,
+    },
     /// Print the version banner and exit.
     Version,
+}
+
+fn echo_run(endpoint: &str, model: &str, inputs: &std::path::Path, out: &std::path::Path, max_tokens: u32, limit: Option<usize>) -> anyhow::Result<()> {
+    let text = std::fs::read_to_string(inputs)?;
+    let agent = ureq::AgentBuilder::new().timeout(std::time::Duration::from_secs(180)).build();
+    let url = format!("{}/v1/completions", endpoint.trim_end_matches('/'));
+    let mut rows = String::new();
+    let (mut n, mut n_na) = (0usize, 0usize);
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        if limit.is_some_and(|l| n >= l) {
+            break;
+        }
+        let item: serde_json::Value = serde_json::from_str(line)?;
+        let id = item["id"].as_str().unwrap_or("?").to_string();
+        let prefix = item["prefix"].as_str().unwrap_or("");
+        let held = item["held_out"].as_str().unwrap_or("");
+        let body = serde_json::json!({
+            "model": model, "prompt": prefix, "max_tokens": max_tokens,
+            "temperature": 0.0, "top_p": 1.0, "seed": 42
+        });
+        let resp: serde_json::Value = agent.post(&url).set("Content-Type", "application/json").send_string(&body.to_string())?.into_json()?;
+        let cont = resp["choices"][0]["text"].as_str().unwrap_or("");
+        let score = if cont.trim().is_empty() || held.is_empty() { None } else { Some(echo_canary_score(cont, held)) };
+        if score.is_none() {
+            n_na += 1;
+        }
+        rows.push_str(&serde_json::to_string(&serde_json::json!({
+            "id": id, "echo_canary": score, "continuation_chars": cont.len(), "held_out_chars": held.len()
+        }))?);
+        rows.push('\n');
+        n += 1;
+        if n % 25 == 0 {
+            eprintln!("{n} items scored");
+        }
+    }
+    std::fs::write(out, rows)?;
+    eprintln!("echo-run: {n} items, {n_na} n/a, written to {}", out.display());
+    Ok(())
 }
 
 /// Split text at the word boundary nearest its midpoint: (prefix, held_out).
@@ -328,6 +389,7 @@ fn main() -> anyhow::Result<()> {
             );
         }
         Cmd::Prepare { gsm8k, humaneval, out, sample, seed } => prepare(&gsm8k, &humaneval, &out, sample, seed)?,
+        Cmd::EchoRun { endpoint, model, inputs, out, max_tokens, limit } => echo_run(&endpoint, &model, &inputs, &out, max_tokens, limit)?,
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }
     Ok(())
