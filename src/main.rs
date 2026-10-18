@@ -314,7 +314,8 @@ fn loss_run(bin: &std::path::Path, model_file: &std::path::Path, model: &str, ex
     eprintln!("  {} chunks; scoring paraphrases", nll_o.len());
     let (nll_p, _) = perplexity_chunks(bin, model_file, &pf, ctx, gpu)?;
     anyhow::ensure!(!nll_o.is_empty() && !nll_p.is_empty(), "perplexity produced no chunks (text shorter than the context?)");
-    let (delta, lo, hi) = bootstrap_diff_of_means(&nll_o, &nll_p, 2000, 42);
+    // Crate pre-registration (docs/PREREGISTRATION.md §2): loss_delta = loss(paraphrase) - loss(original); positive = memorised wording.
+    let (delta, lo, hi) = bootstrap_diff_of_means(&nll_p, &nll_o, 2000, 42);
     let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
     let res = serde_json::json!({
         "tool": format!("contamcheck {}", env!("CARGO_PKG_VERSION")), "probe": "loss_delta", "model": model, "benchmark": bench,
@@ -324,7 +325,7 @@ fn loss_run(bin: &std::path::Path, model_file: &std::path::Path, model: &str, ex
         "original_text_sha256": sha256_hex(orig.join("\n\n").as_bytes()), "paraphrase_text_sha256": sha256_hex(para.join("\n\n").as_bytes()),
         "n_chunks_original": nll_o.len(), "n_chunks_paraphrase": nll_p.len(),
         "mean_nll_original": mean(&nll_o), "mean_nll_paraphrase": mean(&nll_p),
-        "loss_delta": delta, "ci_lo": lo, "ci_hi": hi,
+        "loss_delta": delta, "ci_lo": lo, "ci_hi": hi, "sign": "loss(paraphrase) - loss(original), per the crate pre-registration; the study text's sentence lists the terms in the other order",
         "interval_unit": "bootstrap (2000, seed 42) over fixed-size scored chunks of the concatenated texts, not over items; per-item NLL is not available from this serving stack",
         "per_chunk_nll_original": nll_o, "per_chunk_nll_paraphrase": nll_p,
     });
@@ -372,8 +373,13 @@ fn study_summarize(results: &std::path::Path, out: &std::path::Path, readme: Opt
             let (bench, model) = rest.split_once('-').ok_or_else(|| anyhow::anyhow!("bad name {name}"))?;
             let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&p)?)?;
             let c = cells.entry((model.to_string(), bench.to_string())).or_default();
-            let (d, lo) = (v["loss_delta"].as_f64().unwrap_or(f64::NAN), v["ci_lo"].as_f64().unwrap_or(f64::NAN));
-            c.insert("loss_delta".into(), v["loss_delta"].clone()); c.insert("loss_ci_lo".into(), v["ci_lo"].clone()); c.insert("loss_ci_hi".into(), v["ci_hi"].clone());
+            // Recompute from the per-chunk NLLs with the crate's sign (paraphrase - original), so the
+            // summary does not depend on which binary wrote the cell file.
+            let arr = |k: &str| -> Vec<f64> { v[k].as_array().map(|a| a.iter().filter_map(|x| x.as_f64()).collect()).unwrap_or_default() };
+            let (nll_o, nll_p) = (arr("per_chunk_nll_original"), arr("per_chunk_nll_paraphrase"));
+            let (d, lo, hi) = if nll_o.is_empty() || nll_p.is_empty() { (f64::NAN, f64::NAN, f64::NAN) } else { bootstrap_diff_of_means(&nll_p, &nll_o, 2000, 42) };
+            c.insert("loss_delta".into(), d.into()); c.insert("loss_ci_lo".into(), lo.into()); c.insert("loss_ci_hi".into(), hi.into());
+            c.insert("loss_mean_nll_original".into(), v["mean_nll_original"].clone()); c.insert("loss_mean_nll_paraphrase".into(), v["mean_nll_paraphrase"].clone());
             c.insert("loss_n_items".into(), v["n_items"].clone()); c.insert("loss_n_chunks".into(), v["n_chunks_original"].clone());
             c.insert("loss_flagged".into(), contamcheck::flagged(d, lo, 0.2).into());
             c.insert("loss_headline_excluded".into(), (model == paraphraser).into());

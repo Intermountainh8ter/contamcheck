@@ -75,11 +75,13 @@
       "echo_n": 300,
       "echo_na": 0,
       "echo_verdict_allowed": true,
-      "loss_ci_hi": -0.28678205205678786,
-      "loss_ci_lo": -0.4845418674918083,
-      "loss_delta": -0.38630300000000006,
-      "loss_flagged": false,
+      "loss_ci_hi": 0.4837582526392452,
+      "loss_ci_lo": 0.2882017783036033,
+      "loss_delta": 0.38630300000000006,
+      "loss_flagged": true,
       "loss_headline_excluded": false,
+      "loss_mean_nll_original": 1.09413,
+      "loss_mean_nll_paraphrase": 1.480433,
       "loss_n_chunks": 82,
       "loss_n_items": 179,
       "model": "qwen3-8b-stock"
@@ -96,7 +98,7 @@
       "model": "qwen3-8b-stock"
     }
   ],
-  "h1_gsm8k_loss_delta_flag": "not supported: no model flagged (1 cells)",
+  "h1_gsm8k_loss_delta_flag": "supported: flagged qwen3-8b-stock",
   "h2_humaneval_echo_flag": "not supported: no model flagged (4 cells)",
   "h3_ordering": "not evaluated: 1 of 4 GSM8K loss-delta cells present",
   "ngram_probe": "not applicable for every cell: no public training-set proxy exists for these models (study §Probes 3)",
