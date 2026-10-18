@@ -89,8 +89,144 @@ enum Cmd {
         #[arg(long, default_value_t = 13)]
         n: usize,
     },
+    /// Turn the GSM8K test split and HumanEval into probe inputs for the
+    /// pre-registered study (docs/STUDY-local-models-2026-10.md): Example
+    /// JSONL per benchmark, echo-canary prefix/held-out halves, paraphrase
+    /// requests, and a prepare.json with input hashes and the seeded sample.
+    Prepare {
+        /// GSM8K test split as JSONL rows with `question` and `answer`.
+        #[arg(long)]
+        gsm8k: std::path::PathBuf,
+        /// HumanEval JSONL with `task_id`, `prompt`, `canonical_solution`.
+        #[arg(long)]
+        humaneval: std::path::PathBuf,
+        /// Output directory (created).
+        #[arg(long)]
+        out: std::path::PathBuf,
+        /// GSM8K items to sample (HumanEval is used whole).
+        #[arg(long, default_value_t = 300)]
+        sample: usize,
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+    },
     /// Print the version banner and exit.
     Version,
+}
+
+/// Split text at the word boundary nearest its midpoint: (prefix, held_out).
+fn split_half(s: &str) -> (String, String) {
+    let mut mid = s.len() / 2;
+    while mid > 0 && !s.is_char_boundary(mid) {
+        mid -= 1;
+    }
+    let cut = s[..mid]
+        .rfind(char::is_whitespace)
+        .map(|i| i + s[i..].chars().next().map_or(1, |c| c.len_utf8()))
+        .unwrap_or(mid);
+    let cut = if cut == 0 { mid } else { cut };
+    (s[..cut].to_string(), s[cut..].to_string())
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    hex::encode(sha2::Sha256::digest(bytes))
+}
+
+fn prepare(
+    gsm8k: &std::path::Path,
+    humaneval: &std::path::Path,
+    out: &std::path::Path,
+    sample: usize,
+    seed: u64,
+) -> anyhow::Result<()> {
+    use rand::{Rng, SeedableRng};
+    std::fs::create_dir_all(out)?;
+    let g_bytes = std::fs::read(gsm8k)?;
+    let h_bytes = std::fs::read(humaneval)?;
+    let g_rows: Vec<serde_json::Value> = String::from_utf8_lossy(&g_bytes)
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| serde_json::from_str(l))
+        .collect::<Result<_, _>>()?;
+    let h_rows: Vec<serde_json::Value> = String::from_utf8_lossy(&h_bytes)
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| serde_json::from_str(l))
+        .collect::<Result<_, _>>()?;
+    anyhow::ensure!(sample <= g_rows.len(), "sample {} > {} GSM8K rows", sample, g_rows.len());
+
+    // Seeded sample without replacement (partial Fisher-Yates), ids = row index.
+    let mut idx: Vec<usize> = (0..g_rows.len()).collect();
+    let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
+    for i in 0..sample {
+        let j = i + rng.gen_range(0..idx.len() - i);
+        idx.swap(i, j);
+    }
+    let mut sample_ids: Vec<usize> = idx[..sample].to_vec();
+    sample_ids.sort_unstable();
+
+    let write_bench = |name: &str, items: Vec<(String, String, String)>| -> anyhow::Result<usize> {
+        let mut ex = String::new();
+        let mut echo = String::new();
+        let mut para = String::new();
+        for (id, prompt, reference) in &items {
+            let e = Example { id: id.clone(), prompt: prompt.clone(), reference: reference.clone(), paraphrase: None };
+            ex.push_str(&serde_json::to_string(&e)?);
+            ex.push('\n');
+            let (first, held) = split_half(reference);
+            echo.push_str(&serde_json::to_string(&serde_json::json!({
+                "id": id, "prefix": format!("{prompt}{first}"), "held_out": held
+            }))?);
+            echo.push('\n');
+            para.push_str(&serde_json::to_string(&serde_json::json!({ "id": id, "text": reference }))?);
+            para.push('\n');
+        }
+        std::fs::write(out.join(format!("{name}.examples.jsonl")), ex)?;
+        std::fs::write(out.join(format!("{name}.echo.jsonl")), echo)?;
+        std::fs::write(out.join(format!("{name}.paraphrase-requests.jsonl")), para)?;
+        Ok(items.len())
+    };
+
+    let g_items: Vec<(String, String, String)> = sample_ids
+        .iter()
+        .map(|&i| {
+            let r = &g_rows[i];
+            (
+                format!("gsm8k-test-{i}"),
+                r["question"].as_str().unwrap_or("").to_string() + "\n",
+                r["answer"].as_str().unwrap_or("").to_string(),
+            )
+        })
+        .collect();
+    let h_items: Vec<(String, String, String)> = h_rows
+        .iter()
+        .map(|r| {
+            (
+                r["task_id"].as_str().unwrap_or("?").to_string(),
+                r["prompt"].as_str().unwrap_or("").to_string(),
+                r["canonical_solution"].as_str().unwrap_or("").to_string(),
+            )
+        })
+        .collect();
+    let n_g = write_bench("gsm8k", g_items)?;
+    let n_h = write_bench("humaneval", h_items)?;
+
+    let meta = serde_json::json!({
+        "tool": format!("contamcheck {}", env!("CARGO_PKG_VERSION")),
+        "study": "docs/STUDY-local-models-2026-10.md",
+        "inputs": {
+            "gsm8k": { "path": gsm8k.to_string_lossy(), "sha256": sha256_hex(&g_bytes), "rows": g_rows.len() },
+            "humaneval": { "path": humaneval.to_string_lossy(), "sha256": sha256_hex(&h_bytes), "rows": h_rows.len() }
+        },
+        "seed": seed,
+        "gsm8k_sample_size": n_g,
+        "gsm8k_sample_row_indices": sample_ids,
+        "humaneval_items": n_h,
+        "split_rule": "reference split at the word boundary nearest its midpoint; prefix = prompt + first half; held_out = second half"
+    });
+    std::fs::write(out.join("prepare.json"), serde_json::to_string_pretty(&meta)?)?;
+    eprintln!("prepared {n_g} GSM8K and {n_h} HumanEval items in {}", out.display());
+    Ok(())
 }
 
 fn main() -> anyhow::Result<()> {
@@ -191,6 +327,7 @@ fn main() -> anyhow::Result<()> {
                 n
             );
         }
+        Cmd::Prepare { gsm8k, humaneval, out, sample, seed } => prepare(&gsm8k, &humaneval, &out, sample, seed)?,
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }
     Ok(())
