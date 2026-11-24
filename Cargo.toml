@@ -28,3 +28,5 @@ path = "src/main.rs"
 name = "contamcheck"
 path = "src/lib.rs"
 
+
+[workspace]
