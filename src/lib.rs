@@ -8,6 +8,8 @@
 //! (mean > threshold AND CI lower bound > 0); see
 //! `docs/PREREGISTRATION.md`.
 
+pub mod nullcal;
+
 use rand::SeedableRng;
 use rand_pcg::Pcg64Mcg;
 use serde::{Deserialize, Serialize};

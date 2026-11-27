@@ -198,6 +198,28 @@ enum Cmd {
         limit: Option<usize>,
     },
     /// Print the version banner and exit.
+    /// Model-free null calibration of the n-gram flagging rule on seeded
+    /// independent Zipf text; writes a results JSON.
+    Nullcal {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 100)]
+        benchmarks: usize,
+        #[arg(long, default_value_t = 50)]
+        examples: usize,
+        #[arg(long, default_value_t = 30)]
+        tokens: usize,
+        #[arg(long, default_value_t = 20000)]
+        proxy_tokens: usize,
+        #[arg(long, default_value_t = 5000)]
+        vocab: usize,
+        #[arg(long, default_value_t = 200)]
+        bootstrap: usize,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![1usize, 2, 3, 4, 5, 8, 13])]
+        ns: Vec<usize>,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -698,7 +720,45 @@ fn main() -> anyhow::Result<()> {
         Cmd::LossRun { perplexity_bin, model_file, model, examples, paraphrases, out, scratch_dir, ctx, gpu } => loss_run(&perplexity_bin, &model_file, &model, &examples, &paraphrases, &out, &scratch_dir, ctx, &gpu)?,
         Cmd::StudySummarize { results, out, readme, paraphraser } => study_summarize(&results, &out, readme.as_deref(), &paraphraser)?,
         Cmd::ParaphraseRun { endpoint, model, inputs, out, rejects_out, max_tokens, limit } => paraphrase_run(&endpoint, &model, &inputs, &out, &rejects_out, max_tokens, limit)?,
+        Cmd::Nullcal { seed, benchmarks, examples, tokens, proxy_tokens, vocab, bootstrap, ns, out } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
+            let p = contamcheck::nullcal::Params { seed, benchmarks, examples, tokens, proxy_tokens, vocab, boot_iters: bootstrap, ns: ns.clone() };
+            let cells = contamcheck::nullcal::run(&p);
+            let by_n: serde_json::Map<String, serde_json::Value> = cells.iter().map(|(n, c)| (n.to_string(), serde_json::json!(c.rate))).collect();
+            let detail: serde_json::Map<String, serde_json::Value> = cells.iter().map(|(n, c)| (n.to_string(), serde_json::to_value(c).unwrap())).collect();
+            let cmd: Vec<String> = std::env::args().collect();
+            let v = serde_json::json!({
+                "null_flag_rate": {"by_n": by_n, "detail_by_n": detail},
+                "params": {"seed": seed, "benchmarks": benchmarks, "examples": examples, "tokens": tokens, "proxy_tokens": proxy_tokens, "vocab": vocab, "bootstrap_iters": bootstrap, "ns": ns, "ngram_threshold": Thresholds::default().ngram, "generator": "independent draws from one Zipf(s=1) distribution over the vocabulary"},
+                "provenance": {
+                    "started_at": format_utc(started),
+                    "seeds": [seed],
+                    "command": cmd.join(" "),
+                    "hardware": "cpu only, no model",
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded Zipf generator in the component, no external data", "license": "MIT (component code)"}]
+                }
+            });
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            eprintln!("wrote {}", out.display());
+        }
         Cmd::Version => println!("contamcheck {}", env!("CARGO_PKG_VERSION")),
     }
     Ok(())
+}
+
+fn format_utc(secs: u64) -> String {
+    let days = (secs / 86400) as i64;
+    let rem = secs % 86400;
+    let z = days + 719468;
+    let era = z.div_euclid(146097);
+    let doe = z.rem_euclid(146097);
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", rem / 3600, rem % 3600 / 60, rem % 60)
 }

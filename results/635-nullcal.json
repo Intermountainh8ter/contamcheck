@@ -1,0 +1,106 @@
+{
+  "null_flag_rate": {
+    "by_n": {
+      "1": 1.0,
+      "13": 0.0,
+      "2": 1.0,
+      "3": 0.14,
+      "4": 0.0,
+      "5": 0.0,
+      "8": 0.0
+    },
+    "detail_by_n": {
+      "1": {
+        "benchmarks": 100,
+        "flagged": 100,
+        "mean_overlap": 0.9166570261227495,
+        "rate": 1.0,
+        "wilson_hi": 0.9999999999999999,
+        "wilson_lo": 0.9630051925239981
+      },
+      "13": {
+        "benchmarks": 100,
+        "flagged": 0,
+        "mean_overlap": 0.0,
+        "rate": 0.0,
+        "wilson_hi": 0.03699480747600191,
+        "wilson_lo": 0.0
+      },
+      "2": {
+        "benchmarks": 100,
+        "flagged": 100,
+        "mean_overlap": 0.31704292842162557,
+        "rate": 1.0,
+        "wilson_hi": 0.9999999999999999,
+        "wilson_lo": 0.9630051925239981
+      },
+      "3": {
+        "benchmarks": 100,
+        "flagged": 14,
+        "mean_overlap": 0.04308209930809933,
+        "rate": 0.14,
+        "wilson_hi": 0.22137360383807236,
+        "wilson_lo": 0.08526265754464905
+      },
+      "4": {
+        "benchmarks": 100,
+        "flagged": 0,
+        "mean_overlap": 0.002149572649572648,
+        "rate": 0.0,
+        "wilson_hi": 0.03699480747600191,
+        "wilson_lo": 0.0
+      },
+      "5": {
+        "benchmarks": 100,
+        "flagged": 0,
+        "mean_overlap": 0.00005384615384615385,
+        "rate": 0.0,
+        "wilson_hi": 0.03699480747600191,
+        "wilson_lo": 0.0
+      },
+      "8": {
+        "benchmarks": 100,
+        "flagged": 0,
+        "mean_overlap": 0.0,
+        "rate": 0.0,
+        "wilson_hi": 0.03699480747600191,
+        "wilson_lo": 0.0
+      }
+    }
+  },
+  "params": {
+    "benchmarks": 100,
+    "bootstrap_iters": 200,
+    "examples": 50,
+    "generator": "independent draws from one Zipf(s=1) distribution over the vocabulary",
+    "ngram_threshold": 0.05,
+    "ns": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      8,
+      13
+    ],
+    "proxy_tokens": 20000,
+    "seed": 7,
+    "tokens": 30,
+    "vocab": 5000
+  },
+  "provenance": {
+    "command": "target/release/contamcheck nullcal --seed 7 --benchmarks 100 --examples 50 --out results/635-nullcal.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded Zipf generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-27T06:24:03Z",
+    "wall_s": 1.468525902
+  }
+}

@@ -61,6 +61,10 @@ contamcheck probe example.json proxy.txt model_output.txt suffix.txt \
 contamcheck aggregate probes.jsonl
 ```
 
+## Null calibration of the n-gram rule
+
+`contamcheck nullcal` draws benchmark and proxy text independently from one seeded Zipf distribution (vocabulary 5000, 30 tokens per example, proxy of 20000 tokens, 100 benchmarks of 50 examples) and reports the share the pre-registered n-gram rule flags; every flag is a false positive. Result file `results/635-nullcal.json`: flag rate 0.0 at n=13 and 1.0 at n=2 (0.14 at n=3, 0.0 at n=4). Synthetic text only; real benchmarks have repeated boilerplate that this null does not model. Reproduce: `cargo run --locked -q --release -- nullcal --seed 7 --benchmarks 100 --examples 50 --out results/635-nullcal.json`.
+
 ## License
 
 MIT. See `LICENSE`.
