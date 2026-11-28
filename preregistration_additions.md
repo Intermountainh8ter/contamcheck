@@ -37,3 +37,13 @@ Metric: /recall_by_paraphrase_share/by_n/13/0.5/recall. Expected: at least 0.95;
 Falsifier: n=13 recall below 0.95 at paraphrase share 0.5, or above 0.20 at paraphrase share 0.9, on the seeded set.
 
 Run: cargo run --locked -q --release -- paracurve --seed 7 --benchmarks 100 --examples 50 --leak-share 0.5 --out results/788-paracurve.json (paraphrase shares 0,0.25,0.5,0.75,0.9,1.0; rewrite rate 0.5; n sweep 5,8,13; bootstrap 200).
+
+## 2026-11-28T04:45:09Z boilerplate proposal:ea9f8ff3fde880d207d7af24a8099022929e3574bb740e4bd5801d226f328c2b
+
+Hypothesis: on seeded Zipf text (vocabulary 5000, 30 tokens per example, 50 examples per benchmark, 100 benchmarks, bootstrap 200, proxy of 20000 independent tokens plus one verbatim copy of a shared boilerplate prefix that is also the first tokens of every item, no item copied), the pre-registered n-gram rule at n=13 false-flags at most 5% of clean benchmarks when the boilerplate prefix is 12 tokens and at least 95% when it is 13 tokens; the clean-set false-positive rate is a step function of boilerplate length relative to n.
+
+Metric: /boilerplate_null/by_n/13/by_len/13/rate. Expected: at least 0.95; the same path with 12 at most 0.05.
+
+Falsifier: n=13 false-flag rate below 0.95 at boilerplate length 13, or above 0.05 at length 12, on the seeded set.
+
+Run: cargo run --locked -q --release -- boilerplate --seed 7 --benchmarks 100 --examples 50 --out results/815-boilerplate.json (boilerplate lengths 0,6,12,13,20; n sweep 5,8,13).

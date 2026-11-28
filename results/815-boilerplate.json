@@ -1,0 +1,166 @@
+{
+  "boilerplate_null": {
+    "by_n": {
+      "13": {
+        "by_len": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "12": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "13": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "6": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          }
+        }
+      },
+      "5": {
+        "by_len": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "12": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "13": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "6": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        }
+      },
+      "8": {
+        "by_len": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "12": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "13": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "6": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          }
+        }
+      }
+    }
+  },
+  "never_flag_responder_false_flag_rate_by_n": {
+    "13": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "params": {
+    "benchmarks": 100,
+    "bootstrap_iters": 200,
+    "examples": 50,
+    "generator": "independent Zipf(s=1) draws; the first len tokens of every item are replaced by one shared Zipf boilerplate and one copy of it is appended to the proxy; no item is copied, so every flag is a false positive",
+    "lens": [
+      0,
+      6,
+      12,
+      13,
+      20
+    ],
+    "ngram_threshold": 0.05,
+    "ns": [
+      5,
+      8,
+      13
+    ],
+    "proxy_tokens": 20000,
+    "seed": 7,
+    "tokens": 30,
+    "vocab": 5000
+  },
+  "provenance": {
+    "command": "target/release/contamcheck boilerplate --seed 7 --benchmarks 100 --examples 50 --out results/815-boilerplate.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded Zipf generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T04:45:32Z",
+    "wall_s": 3.134201878
+  }
+}

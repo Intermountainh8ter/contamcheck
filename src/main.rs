@@ -297,6 +297,30 @@ enum Cmd {
         #[arg(long)]
         out: std::path::PathBuf,
     },
+    /// Clean-set false-flag rate of the n-gram rule with a shared boilerplate
+    /// prefix in every item and once in the proxy; no item is copied.
+    Boilerplate {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 100)]
+        benchmarks: usize,
+        #[arg(long, default_value_t = 50)]
+        examples: usize,
+        #[arg(long, default_value_t = 30)]
+        tokens: usize,
+        #[arg(long, default_value_t = 20000)]
+        proxy_tokens: usize,
+        #[arg(long, default_value_t = 5000)]
+        vocab: usize,
+        #[arg(long, default_value_t = 200)]
+        bootstrap: usize,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![0usize, 6, 12, 13, 20])]
+        lens: Vec<usize>,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![5usize, 8, 13])]
+        ns: Vec<usize>,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -878,6 +902,34 @@ fn main() -> anyhow::Result<()> {
                 "null_flag_rate_by_n": null_by_n,
                 "never_flag_responder_recall_by_n": never,
                 "params": {"seed": seed, "benchmarks": benchmarks, "examples": examples, "tokens": tokens, "proxy_tokens": proxy_tokens, "vocab": vocab, "bootstrap_iters": bootstrap, "shares": shares, "ns": ns, "ngram_threshold": Thresholds::default().ngram, "generator": "independent Zipf(s=1) draws; the first round(share*examples) items are appended to the proxy verbatim or with each token rewritten by a fresh Zipf draw at the edit rate"},
+                "provenance": {
+                    "started_at": format_utc(started),
+                    "seeds": [seed],
+                    "command": cmd.join(" "),
+                    "hardware": "cpu only, no model",
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded Zipf generator in the component, no external data", "license": "MIT (component code)"}]
+                }
+            });
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            eprintln!("wrote {}", out.display());
+        }
+        Cmd::Boilerplate { seed, benchmarks, examples, tokens, proxy_tokens, vocab, bootstrap, lens, ns, out } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
+            let p = contamcheck::evasion::Params { seed, benchmarks, examples, tokens, proxy_tokens, vocab, boot_iters: bootstrap, leak_share: 0.0, ns: ns.clone(), classes: vec![] };
+            let res = contamcheck::boilerplate::sweep(&p, &lens);
+            let mut by_n = serde_json::Map::new();
+            for (n, per_len) in &res {
+                let m: serde_json::Map<String, serde_json::Value> = per_len.iter().map(|(k, c)| (k.to_string(), serde_json::json!({"rate": c.recall, "flagged": c.flagged, "benchmarks": c.benchmarks, "wilson_lo": c.wilson_lo, "wilson_hi": c.wilson_hi}))).collect();
+                by_n.insert(n.to_string(), serde_json::json!({"by_len": m}));
+            }
+            let never: serde_json::Map<String, serde_json::Value> = ns.iter().map(|n| (n.to_string(), serde_json::json!(0.0))).collect();
+            let cmd: Vec<String> = std::env::args().collect();
+            let v = serde_json::json!({
+                "boilerplate_null": {"by_n": by_n},
+                "never_flag_responder_false_flag_rate_by_n": never,
+                "params": {"seed": seed, "benchmarks": benchmarks, "examples": examples, "tokens": tokens, "proxy_tokens": proxy_tokens, "vocab": vocab, "bootstrap_iters": bootstrap, "lens": lens, "ns": ns, "ngram_threshold": Thresholds::default().ngram, "generator": "independent Zipf(s=1) draws; the first len tokens of every item are replaced by one shared Zipf boilerplate and one copy of it is appended to the proxy; no item is copied, so every flag is a false positive"},
                 "provenance": {
                     "started_at": format_utc(started),
                     "seeds": [seed],

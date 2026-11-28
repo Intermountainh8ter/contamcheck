@@ -77,6 +77,10 @@ contamcheck aggregate probes.jsonl
 
 `contamcheck paracurve` leaks 50% of each seeded Zipf benchmark (100 benchmarks of 50 examples, 30 tokens per example, vocabulary 5000) into the proxy, rewrites a swept share of the leaked items at token rewrite rate 0.5 (the rest verbatim), and reports the share of benchmarks the pre-registered n-gram rule flags. Result file `results/788-paracurve.json`: at n=13 recall is 1.0 at paraphrase shares 0, 0.25, 0.5 and 0.75, and 0.0 at 0.9 and 1.0; at n=5 it is 0.86 at share 0.9. The pre-registered hypothesis (recall at least 0.95 at share 0.5 and at most 0.20 at share 0.9) held at n=13. The null flag rate is 0.0 at n=13, 8 and 5, and a never-flag responder has recall 0.0. Synthetic text only; rewrites are independent per token, not semantic paraphrases. Reproduce: `cargo run --locked -q --release -- paracurve --seed 7 --benchmarks 100 --examples 50 --leak-share 0.5 --out results/788-paracurve.json`.
 
+## Boilerplate false positives of the n-gram rule
+
+`contamcheck boilerplate` replaces the first L tokens of every item of a clean seeded Zipf benchmark (100 benchmarks of 50 examples, 30 tokens per example, vocabulary 5000) with one shared boilerplate and appends one copy of it to the proxy; no item is copied, so every flag is a false positive. Result file `results/815-boilerplate.json`: at n=13 the false-flag rate is 0.0 at L=0, 6 and 12 and 1.0 at L=13 and 20; at n=8 it is 0.0 at L=6 and 1.0 at L=12; at n=5 it is 1.0 at L=6 and above. The pre-registered hypothesis (at least 0.95 at L=13, at most 0.05 at L=12, n=13) held. A never-flag responder has false-flag rate 0.0. Synthetic text only; real boilerplate is not one fixed prefix. Reproduce: `cargo run --locked -q --release -- boilerplate --seed 7 --benchmarks 100 --examples 50 --out results/815-boilerplate.json`.
+
 ## License
 
 MIT. See `LICENSE`.

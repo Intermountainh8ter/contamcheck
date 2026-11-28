@@ -9,6 +9,7 @@ use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64Mcg;
 use std::collections::{BTreeMap, HashSet};
 
+#[derive(Clone, Debug)]
 pub struct Params {
     pub seed: u64,
     pub benchmarks: usize,
