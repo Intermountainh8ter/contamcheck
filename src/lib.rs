@@ -8,6 +8,7 @@
 //! (mean > threshold AND CI lower bound > 0); see
 //! `docs/PREREGISTRATION.md`.
 
+pub mod evasion;
 pub mod nullcal;
 
 use rand::SeedableRng;

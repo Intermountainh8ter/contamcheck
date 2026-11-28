@@ -65,6 +65,10 @@ contamcheck aggregate probes.jsonl
 
 `contamcheck nullcal` draws benchmark and proxy text independently from one seeded Zipf distribution (vocabulary 5000, 30 tokens per example, proxy of 20000 tokens, 100 benchmarks of 50 examples) and reports the share the pre-registered n-gram rule flags; every flag is a false positive. Result file `results/635-nullcal.json`: flag rate 0.0 at n=13 and 1.0 at n=2 (0.14 at n=3, 0.0 at n=4). Synthetic text only; real benchmarks have repeated boilerplate that this null does not model. Reproduce: `cargo run --locked -q --release -- nullcal --seed 7 --benchmarks 100 --examples 50 --out results/635-nullcal.json`.
 
+## Evasion curve of the n-gram rule
+
+`contamcheck evasion` leaks the first 50% of each seeded Zipf benchmark (100 benchmarks of 50 examples, 30 tokens per example, vocabulary 5000) into the proxy verbatim or with each token rewritten at a set rate, and reports the share of benchmarks the pre-registered n-gram rule flags. Result file `results/775-evasion.json`: at n=13 recall is 1.0 for verbatim and 0.1 rewrite rates and 0.0 at 0.25 and 0.5 (paraphrase class); at n=2 recall is 1.0 for every class, but the n=2 null flag rate is also 1.0, so that recall carries no information. A never-flag responder has recall 0.0. Synthetic text only; rewrites are independent per token, not semantic paraphrases. Reproduce: `cargo run --locked -q --release -- evasion --seed 7 --benchmarks 100 --examples 50 --leak-share 0.5 --out results/775-evasion.json`.
+
 ## License
 
 MIT. See `LICENSE`.

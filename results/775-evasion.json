@@ -1,0 +1,275 @@
+{
+  "never_flag_responder_recall_by_n": {
+    "13": 0.0,
+    "2": 0.0,
+    "3": 0.0,
+    "4": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "null_flag_rate_by_n": {
+    "13": 0.0,
+    "2": 1.0,
+    "3": 0.14,
+    "4": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "params": {
+    "benchmarks": 100,
+    "bootstrap_iters": 200,
+    "examples": 50,
+    "generator": "independent Zipf(s=1) draws; leaked items appended to the proxy verbatim or with each token rewritten by a fresh Zipf draw at the edit rate",
+    "leak_share": 0.5,
+    "ngram_threshold": 0.05,
+    "ns": [
+      2,
+      3,
+      4,
+      5,
+      8,
+      13
+    ],
+    "proxy_tokens": 20000,
+    "seed": 7,
+    "tokens": 30,
+    "vocab": 5000
+  },
+  "provenance": {
+    "command": "target/release/contamcheck evasion --seed 7 --benchmarks 100 --examples 50 --leak-share 0.5 --out results/775-evasion.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded Zipf generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T01:51:31Z",
+    "wall_s": 5.934016139
+  },
+  "recall_by_edit_rate": {
+    "light": {
+      "by_n": {
+        "13": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.26026666666666654,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "2": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.8714293631450452,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "3": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.7447318795278798,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "4": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.6629834757834757,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "5": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.5982000000000001,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "8": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.43855652173913034,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        }
+      },
+      "edit_rate": 0.1,
+      "n_primary": 13,
+      "recall": 1.0
+    },
+    "moderate": {
+      "by_n": {
+        "13": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.02802222222222222,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        },
+        "2": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.7036948696860358,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "3": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.4548297794057794,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "4": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.327716809116809,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "5": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.2473230769230768,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "8": {
+          "benchmarks": 100,
+          "flagged": 60,
+          "mean_overlap_leaked": 0.10836521739130432,
+          "recall": 0.6,
+          "wilson_hi": 0.6906002538863971,
+          "wilson_lo": 0.5020007846184025
+        }
+      },
+      "edit_rate": 0.25,
+      "n_primary": 13,
+      "recall": 0.0
+    },
+    "paraphrase": {
+      "by_n": {
+        "13": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.00015555555555555556,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        },
+        "2": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.4925007650753379,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "3": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.16984077492877497,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "4": {
+          "benchmarks": 100,
+          "flagged": 4,
+          "mean_overlap_leaked": 0.0690262108262108,
+          "recall": 0.04,
+          "wilson_hi": 0.09837217232607373,
+          "wilson_lo": 0.015663050551848016
+        },
+        "5": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.0338,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        },
+        "8": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.0037739130434782608,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        }
+      },
+      "edit_rate": 0.5,
+      "n_primary": 13,
+      "recall": 0.0
+    },
+    "verbatim": {
+      "by_n": {
+        "13": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "2": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "3": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "4": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "5": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "8": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        }
+      },
+      "edit_rate": 0.0,
+      "n_primary": 13,
+      "recall": 1.0
+    }
+  }
+}
