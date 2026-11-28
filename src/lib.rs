@@ -11,6 +11,7 @@
 pub mod evasion;
 pub mod leakcurve;
 pub mod nullcal;
+pub mod paracurve;
 
 use rand::SeedableRng;
 use rand_pcg::Pcg64Mcg;

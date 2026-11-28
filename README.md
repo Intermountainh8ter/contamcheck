@@ -73,6 +73,10 @@ contamcheck aggregate probes.jsonl
 
 `contamcheck leakcurve` sweeps the leaked share of each seeded Zipf benchmark (100 benchmarks of 50 examples, 30 tokens per example, vocabulary 5000) into the proxy, verbatim or with each token rewritten at rate 0.1, and reports the share of benchmarks the pre-registered n-gram rule flags. Result file `results/782-leakcurve.json`: at n=13 verbatim recall is 0.0 at leak share 0.02, 0.1 at 0.05 and 1.0 at 0.10 and above; with 0.1 token rewrites it is 0.04 at 0.10, 0.57 at 0.20, 0.87 at 0.30 and 1.0 at 0.50. The pre-registered hypothesis (verbatim recall at most 0.50 at share 0.10) was refuted: the measured value is 1.0. The null flag rate is 0.0 at n=13, 8 and 5, and a never-flag responder has recall 0.0. Synthetic text only; rewrites are independent per token, not semantic paraphrases. Reproduce: `cargo run --locked -q --release -- leakcurve --seed 7 --benchmarks 100 --examples 50 --out results/782-leakcurve.json`.
 
+## Paraphrase-share curve of the n-gram rule
+
+`contamcheck paracurve` leaks 50% of each seeded Zipf benchmark (100 benchmarks of 50 examples, 30 tokens per example, vocabulary 5000) into the proxy, rewrites a swept share of the leaked items at token rewrite rate 0.5 (the rest verbatim), and reports the share of benchmarks the pre-registered n-gram rule flags. Result file `results/788-paracurve.json`: at n=13 recall is 1.0 at paraphrase shares 0, 0.25, 0.5 and 0.75, and 0.0 at 0.9 and 1.0; at n=5 it is 0.86 at share 0.9. The pre-registered hypothesis (recall at least 0.95 at share 0.5 and at most 0.20 at share 0.9) held at n=13. The null flag rate is 0.0 at n=13, 8 and 5, and a never-flag responder has recall 0.0. Synthetic text only; rewrites are independent per token, not semantic paraphrases. Reproduce: `cargo run --locked -q --release -- paracurve --seed 7 --benchmarks 100 --examples 50 --leak-share 0.5 --out results/788-paracurve.json`.
+
 ## License
 
 MIT. See `LICENSE`.

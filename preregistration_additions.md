@@ -27,3 +27,13 @@ Metric: /recall_by_leak_share/verbatim/by_n/13/0.10/recall. Expected: at most 0.
 Falsifier: verbatim recall at n=13 above 0.50 at leak share 0.10, or below 0.95 at leak share 0.20, on the seeded set.
 
 Run: cargo run --locked -q --release -- leakcurve --seed 7 --benchmarks 100 --examples 50 --out results/782-leakcurve.json (shares 0.02,0.05,0.1,0.2,0.3,0.5; classes verbatim and light at rewrite rate 0.1; n sweep 5,8,13).
+
+## 2026-11-28T02:47:09Z paracurve proposal:b034299b6530a8eb785f8287f5a598b245ffaeba0a43ff1eec77c3b3ba88155c
+
+Hypothesis: on seeded Zipf text (vocabulary 5000, 30 tokens per example, 50 examples per benchmark, 100 benchmarks, bootstrap 200) with 50% of items leaked into the proxy, the n=13 pre-registered rule flags at least 95% of benchmarks when half of the leaked items are paraphrased (token rewrite rate 0.5), because the remaining verbatim leak is 25% of the benchmark, but at most 20% of benchmarks when 90% of leaked items are paraphrased (verbatim leak 5%); recall is set by the verbatim remainder, not by the paraphrase share itself.
+
+Metric: /recall_by_paraphrase_share/by_n/13/0.5/recall. Expected: at least 0.95; recall at share 0.9 (same path with 0.9) at most 0.20.
+
+Falsifier: n=13 recall below 0.95 at paraphrase share 0.5, or above 0.20 at paraphrase share 0.9, on the seeded set.
+
+Run: cargo run --locked -q --release -- paracurve --seed 7 --benchmarks 100 --examples 50 --leak-share 0.5 --out results/788-paracurve.json (paraphrase shares 0,0.25,0.5,0.75,0.9,1.0; rewrite rate 0.5; n sweep 5,8,13; bootstrap 200).

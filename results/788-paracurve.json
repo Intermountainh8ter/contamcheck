@@ -1,0 +1,208 @@
+{
+  "never_flag_responder_recall_by_n": {
+    "13": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "null_flag_rate_by_n": {
+    "13": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "params": {
+    "benchmarks": 100,
+    "bootstrap_iters": 200,
+    "examples": 50,
+    "generator": "independent Zipf(s=1) draws; the first round(leak_share*examples) items are appended to the proxy; the first round(share*leaked) of them with each token rewritten by a fresh Zipf draw at the rewrite rate, the rest verbatim",
+    "leak_share": 0.5,
+    "ngram_threshold": 0.05,
+    "ns": [
+      5,
+      8,
+      13
+    ],
+    "proxy_tokens": 20000,
+    "rewrite_rate": 0.5,
+    "seed": 7,
+    "shares": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      0.9,
+      1.0
+    ],
+    "tokens": 30,
+    "vocab": 5000
+  },
+  "provenance": {
+    "command": "target/release/contamcheck paracurve --seed 7 --benchmarks 100 --examples 50 --leak-share 0.5 --out results/788-paracurve.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded Zipf generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T02:47:41Z",
+    "wall_s": 4.59115168
+  },
+  "recall_by_paraphrase_share": {
+    "by_n": {
+      "13": {
+        "0": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.25": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.7600666666666669,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.5": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.48008888888888807,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.75": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.2400666666666663,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.9": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.08015555555555559,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        },
+        "1": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.000022222222222222223,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        }
+      },
+      "5": {
+        "0": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.25": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.7682461538461538,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.5": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.49880000000000024,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.75": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.26672307692307695,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.9": {
+          "benchmarks": 100,
+          "flagged": 86,
+          "mean_overlap_leaked": 0.11115384615384613,
+          "recall": 0.86,
+          "wilson_hi": 0.914737342455351,
+          "wilson_lo": 0.7786263961619276
+        },
+        "1": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.03430769230769229,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        }
+      },
+      "8": {
+        "0": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 1.0,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.25": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.7614608695652175,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.5": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.482452173913043,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.75": {
+          "benchmarks": 100,
+          "flagged": 100,
+          "mean_overlap_leaked": 0.24344347826086946,
+          "recall": 1.0,
+          "wilson_hi": 0.9999999999999999,
+          "wilson_lo": 0.9630051925239981
+        },
+        "0.9": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.0835130434782609,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        },
+        "1": {
+          "benchmarks": 100,
+          "flagged": 0,
+          "mean_overlap_leaked": 0.004069565217391304,
+          "recall": 0.0,
+          "wilson_hi": 0.03699480747600191,
+          "wilson_lo": 0.0
+        }
+      }
+    },
+    "rewrite_rate": 0.5
+  }
+}

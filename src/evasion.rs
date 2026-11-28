@@ -48,7 +48,7 @@ pub fn rewrite(zipf: &Zipf, rng: &mut Pcg64Mcg, item: &[u32], rate: f64) -> Vec<
         .collect()
 }
 
-fn flagged_for(bench: &[Vec<u32>], proxy: &[u32], n: usize, p: &Params, b: usize) -> (bool, f64) {
+pub fn flagged_for(bench: &[Vec<u32>], proxy: &[u32], n: usize, p: &Params, b: usize) -> (bool, f64) {
     let set: HashSet<Vec<u32>> = if proxy.len() >= n {
         proxy.windows(n).map(|w| w.to_vec()).collect()
     } else {
