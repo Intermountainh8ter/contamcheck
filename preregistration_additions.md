@@ -57,3 +57,13 @@ Metric: /boilerplate_share/by_n/13/by_share/0.5/rate. Expected: at least 0.95; t
 Falsifier: n=13 false-flag rate below 0.95 at boilerplate share 0.5, or above 0.05 at share 0.05, on the seeded set.
 
 Run: cargo run --locked -q --release -- boilerplate-share --seed 7 --benchmarks 100 --examples 50 --out results/823-boilerplate-share.json (shares 0,0.05,0.1,0.2,0.5,1.0; boilerplate length 20; n sweep 5,8,13).
+
+## 2026-11-28T05:27:22Z datedrift proposal:500cf1a335741c8a1c8171fefe673ef5f84de84a89e9f9880de4a040898b4778
+
+Hypothesis: on seeded Zipf text (vocabulary 5000, 30 tokens per example, 50 examples per benchmark, 100 benchmarks, bootstrap 200, 20000-token proxy with no item copied), permuting a share of vocabulary ranks in the proxy does not raise the pre-registered n-gram rule's false-positive rate: at n=3 the rate at shift share 0.5 is at most the rate at shift 0 (0.14 in the shipped null calibration), and at n=13 and n=5 it stays 0.0 at every shift.
+
+Metric: /datedrift/by_n/3/by_shift/0.5/rate. Expected: at most 0.14 (decreases or stays equal vs shift 0).
+
+Falsifier: n=3 false-positive rate at shift 0.5 above 0.14 with shift 0 at or below 0.14, or any nonzero flag rate at n=5 or n=13 at any shift.
+
+Run: cargo run --locked -q --release -- datedrift --seed 7 --benchmarks 100 --examples 50 --out results/826-datedrift.json (shifts 0,0.1,0.25,0.5,1.0; n sweep 3,5,13).

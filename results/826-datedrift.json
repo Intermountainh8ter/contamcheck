@@ -1,0 +1,166 @@
+{
+  "datedrift": {
+    "by_n": {
+      "13": {
+        "by_shift": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.1": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.25": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.5": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "1": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          }
+        }
+      },
+      "3": {
+        "by_shift": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 14,
+            "rate": 0.14,
+            "wilson_hi": 0.22137360383807236,
+            "wilson_lo": 0.08526265754464905
+          },
+          "0.1": {
+            "benchmarks": 100,
+            "flagged": 4,
+            "rate": 0.04,
+            "wilson_hi": 0.09837217232607373,
+            "wilson_lo": 0.015663050551848016
+          },
+          "0.25": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.5": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "1": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          }
+        }
+      },
+      "5": {
+        "by_shift": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.1": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.25": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.5": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "1": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          }
+        }
+      }
+    }
+  },
+  "never_flag_responder_false_flag_rate_by_n": {
+    "13": 0.0,
+    "3": 0.0,
+    "5": 0.0
+  },
+  "params": {
+    "benchmarks": 100,
+    "bootstrap_iters": 200,
+    "examples": 50,
+    "generator": "independent Zipf(s=1) draws for benchmark and proxy; round(shift*vocab) vocabulary ids chosen by seed are shuffled among themselves in the proxy; no item is copied, so every flag is a false positive",
+    "ngram_threshold": 0.05,
+    "ns": [
+      3,
+      5,
+      13
+    ],
+    "proxy_tokens": 20000,
+    "seed": 7,
+    "shifts": [
+      0.0,
+      0.1,
+      0.25,
+      0.5,
+      1.0
+    ],
+    "tokens": 30,
+    "vocab": 5000
+  },
+  "provenance": {
+    "command": "target/release/contamcheck datedrift --seed 7 --benchmarks 100 --examples 50 --out results/826-datedrift.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded Zipf generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T05:27:34Z",
+    "wall_s": 3.20243515
+  }
+}

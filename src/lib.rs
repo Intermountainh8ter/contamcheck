@@ -10,6 +10,7 @@
 
 pub mod boilerplate;
 pub mod boilerplate_share;
+pub mod datedrift;
 pub mod evasion;
 pub mod leakcurve;
 pub mod nullcal;
