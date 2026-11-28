@@ -81,6 +81,10 @@ contamcheck aggregate probes.jsonl
 
 `contamcheck boilerplate` replaces the first L tokens of every item of a clean seeded Zipf benchmark (100 benchmarks of 50 examples, 30 tokens per example, vocabulary 5000) with one shared boilerplate and appends one copy of it to the proxy; no item is copied, so every flag is a false positive. Result file `results/815-boilerplate.json`: at n=13 the false-flag rate is 0.0 at L=0, 6 and 12 and 1.0 at L=13 and 20; at n=8 it is 0.0 at L=6 and 1.0 at L=12; at n=5 it is 1.0 at L=6 and above. The pre-registered hypothesis (at least 0.95 at L=13, at most 0.05 at L=12, n=13) held. A never-flag responder has false-flag rate 0.0. Synthetic text only; real boilerplate is not one fixed prefix. Reproduce: `cargo run --locked -q --release -- boilerplate --seed 7 --benchmarks 100 --examples 50 --out results/815-boilerplate.json`.
 
+## Boilerplate-share curve of the n-gram rule
+
+`contamcheck boilerplate-share` gives a 20-token shared boilerplate prefix (also present once in the proxy) to a swept share of the items of a clean seeded Zipf benchmark (100 benchmarks of 50 examples, 30 tokens per example, vocabulary 5000); no item is copied, so every flag is a false positive. Result file `results/823-boilerplate-share.json`: at n=13 the false-flag rate is 0.0 at shares 0, 0.05 and 0.1, and 1.0 at 0.2, 0.5 and 1; at n=5 and n=8 it is 0.0 at share 0.05 and 1.0 at 0.1. The pre-registered hypothesis (at least 0.95 at share 0.5 and at most 0.05 at share 0.05, n=13) held. A never-flag responder has false-flag rate 0.0. Synthetic text only; the boilerplate is one fixed Zipf string at the item start. Reproduce: `cargo run --locked -q --release -- boilerplate-share --seed 7 --benchmarks 100 --examples 50 --out results/823-boilerplate-share.json`.
+
 ## License
 
 MIT. See `LICENSE`.

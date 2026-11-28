@@ -1,0 +1,189 @@
+{
+  "boilerplate_share": {
+    "by_n": {
+      "13": {
+        "by_share": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.1": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.2": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.5": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "1": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        }
+      },
+      "5": {
+        "by_share": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.1": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.2": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.5": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "1": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        }
+      },
+      "8": {
+        "by_share": {
+          "0": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "rate": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.1": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.2": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.5": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "1": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "rate": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        }
+      }
+    }
+  },
+  "never_flag_responder_false_flag_rate_by_n": {
+    "13": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "params": {
+    "benchmarks": 100,
+    "boilerplate_len": 20,
+    "bootstrap_iters": 200,
+    "examples": 50,
+    "generator": "independent Zipf(s=1) draws; the first len tokens of a swept share of items are replaced by one shared Zipf boilerplate and one copy of it is appended to the proxy; no item is copied, so every flag is a false positive",
+    "ngram_threshold": 0.05,
+    "ns": [
+      5,
+      8,
+      13
+    ],
+    "proxy_tokens": 20000,
+    "seed": 7,
+    "shares": [
+      0.0,
+      0.05,
+      0.1,
+      0.2,
+      0.5,
+      1.0
+    ],
+    "tokens": 30,
+    "vocab": 5000
+  },
+  "provenance": {
+    "command": "target/release/contamcheck boilerplate-share --seed 7 --benchmarks 100 --examples 50 --out results/823-boilerplate-share.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded Zipf generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T05:15:11Z",
+    "wall_s": 4.12935924
+  }
+}

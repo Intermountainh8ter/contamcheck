@@ -47,3 +47,13 @@ Metric: /boilerplate_null/by_n/13/by_len/13/rate. Expected: at least 0.95; the s
 Falsifier: n=13 false-flag rate below 0.95 at boilerplate length 13, or above 0.05 at length 12, on the seeded set.
 
 Run: cargo run --locked -q --release -- boilerplate --seed 7 --benchmarks 100 --examples 50 --out results/815-boilerplate.json (boilerplate lengths 0,6,12,13,20; n sweep 5,8,13).
+
+## 2026-11-28T05:14:42Z boilerplate-share proposal:30bc4c24fbc73ec0b54ff14a538715e67191739e5a50cf0af0cc39789cef097d
+
+Hypothesis: on seeded Zipf text (vocabulary 5000, 30 tokens per example, 50 examples per benchmark, 100 benchmarks, bootstrap 200, proxy of 20000 independent tokens plus one copy of the boilerplate), with a 20-token boilerplate prefix on a swept share of items and no item copied, the pre-registered n=13 rule false-flags at least 95% of benchmarks when 50% of items carry the boilerplate and at most 5% when 5% of items carry it, because the mean per-item overlap crosses the 0.05 threshold between those shares.
+
+Metric: /boilerplate_share/by_n/13/by_share/0.5/rate. Expected: at least 0.95; the same path with 0.05 at most 0.05.
+
+Falsifier: n=13 false-flag rate below 0.95 at boilerplate share 0.5, or above 0.05 at share 0.05, on the seeded set.
+
+Run: cargo run --locked -q --release -- boilerplate-share --seed 7 --benchmarks 100 --examples 50 --out results/823-boilerplate-share.json (shares 0,0.05,0.1,0.2,0.5,1.0; boilerplate length 20; n sweep 5,8,13).

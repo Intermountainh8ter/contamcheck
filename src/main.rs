@@ -321,6 +321,32 @@ enum Cmd {
         #[arg(long)]
         out: std::path::PathBuf,
     },
+    /// Clean-set false-flag rate of the n-gram rule when a shared boilerplate
+    /// prefix is carried by a swept share of items (and once in the proxy).
+    BoilerplateShare {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 100)]
+        benchmarks: usize,
+        #[arg(long, default_value_t = 50)]
+        examples: usize,
+        #[arg(long, default_value_t = 30)]
+        tokens: usize,
+        #[arg(long, default_value_t = 20000)]
+        proxy_tokens: usize,
+        #[arg(long, default_value_t = 5000)]
+        vocab: usize,
+        #[arg(long, default_value_t = 200)]
+        bootstrap: usize,
+        #[arg(long, default_value_t = 20)]
+        len: usize,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![0.0f64, 0.05, 0.1, 0.2, 0.5, 1.0])]
+        shares: Vec<f64>,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![5usize, 8, 13])]
+        ns: Vec<usize>,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -902,6 +928,34 @@ fn main() -> anyhow::Result<()> {
                 "null_flag_rate_by_n": null_by_n,
                 "never_flag_responder_recall_by_n": never,
                 "params": {"seed": seed, "benchmarks": benchmarks, "examples": examples, "tokens": tokens, "proxy_tokens": proxy_tokens, "vocab": vocab, "bootstrap_iters": bootstrap, "shares": shares, "ns": ns, "ngram_threshold": Thresholds::default().ngram, "generator": "independent Zipf(s=1) draws; the first round(share*examples) items are appended to the proxy verbatim or with each token rewritten by a fresh Zipf draw at the edit rate"},
+                "provenance": {
+                    "started_at": format_utc(started),
+                    "seeds": [seed],
+                    "command": cmd.join(" "),
+                    "hardware": "cpu only, no model",
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded Zipf generator in the component, no external data", "license": "MIT (component code)"}]
+                }
+            });
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            eprintln!("wrote {}", out.display());
+        }
+        Cmd::BoilerplateShare { seed, benchmarks, examples, tokens, proxy_tokens, vocab, bootstrap, len, shares, ns, out } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
+            let p = contamcheck::evasion::Params { seed, benchmarks, examples, tokens, proxy_tokens, vocab, boot_iters: bootstrap, leak_share: 0.0, ns: ns.clone(), classes: vec![] };
+            let res = contamcheck::boilerplate_share::sweep(&p, len, &shares);
+            let mut by_n = serde_json::Map::new();
+            for (n, per_share) in &res {
+                let m: serde_json::Map<String, serde_json::Value> = per_share.iter().map(|(k, c)| (k.clone(), serde_json::json!({"rate": c.recall, "flagged": c.flagged, "benchmarks": c.benchmarks, "wilson_lo": c.wilson_lo, "wilson_hi": c.wilson_hi}))).collect();
+                by_n.insert(n.to_string(), serde_json::json!({"by_share": m}));
+            }
+            let never: serde_json::Map<String, serde_json::Value> = ns.iter().map(|n| (n.to_string(), serde_json::json!(0.0))).collect();
+            let cmd: Vec<String> = std::env::args().collect();
+            let v = serde_json::json!({
+                "boilerplate_share": {"by_n": by_n},
+                "never_flag_responder_false_flag_rate_by_n": never,
+                "params": {"seed": seed, "benchmarks": benchmarks, "examples": examples, "tokens": tokens, "proxy_tokens": proxy_tokens, "vocab": vocab, "bootstrap_iters": bootstrap, "boilerplate_len": len, "shares": shares, "ns": ns, "ngram_threshold": Thresholds::default().ngram, "generator": "independent Zipf(s=1) draws; the first len tokens of a swept share of items are replaced by one shared Zipf boilerplate and one copy of it is appended to the proxy; no item is copied, so every flag is a false positive"},
                 "provenance": {
                     "started_at": format_utc(started),
                     "seeds": [seed],

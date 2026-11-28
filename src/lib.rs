@@ -9,6 +9,7 @@
 //! `docs/PREREGISTRATION.md`.
 
 pub mod boilerplate;
+pub mod boilerplate_share;
 pub mod evasion;
 pub mod leakcurve;
 pub mod nullcal;
