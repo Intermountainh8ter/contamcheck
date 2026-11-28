@@ -9,6 +9,7 @@
 //! `docs/PREREGISTRATION.md`.
 
 pub mod evasion;
+pub mod leakcurve;
 pub mod nullcal;
 
 use rand::SeedableRng;

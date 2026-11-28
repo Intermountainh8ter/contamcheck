@@ -1,0 +1,363 @@
+{
+  "never_flag_responder_recall_by_n": {
+    "13": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "null_flag_rate_by_n": {
+    "13": 0.0,
+    "5": 0.0,
+    "8": 0.0
+  },
+  "params": {
+    "benchmarks": 100,
+    "bootstrap_iters": 200,
+    "examples": 50,
+    "generator": "independent Zipf(s=1) draws; the first round(share*examples) items are appended to the proxy verbatim or with each token rewritten by a fresh Zipf draw at the edit rate",
+    "ngram_threshold": 0.05,
+    "ns": [
+      5,
+      8,
+      13
+    ],
+    "proxy_tokens": 20000,
+    "seed": 7,
+    "shares": [
+      0.02,
+      0.05,
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ],
+    "tokens": 30,
+    "vocab": 5000
+  },
+  "provenance": {
+    "command": "target/release/contamcheck leakcurve --seed 7 --benchmarks 100 --examples 50 --out results/782-leakcurve.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded Zipf generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T02:22:44Z",
+    "wall_s": 11.859087031
+  },
+  "recall_by_leak_share": {
+    "light": {
+      "by_n": {
+        "13": {
+          "0.02": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "mean_overlap_leaked": 0.32055555555555565,
+            "recall": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "mean_overlap_leaked": 0.2912962962962963,
+            "recall": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.10": {
+            "benchmarks": 100,
+            "flagged": 4,
+            "mean_overlap_leaked": 0.2777777777777777,
+            "recall": 0.04,
+            "wilson_hi": 0.09837217232607373,
+            "wilson_lo": 0.015663050551848016
+          },
+          "0.20": {
+            "benchmarks": 100,
+            "flagged": 57,
+            "mean_overlap_leaked": 0.2735555555555555,
+            "recall": 0.57,
+            "wilson_hi": 0.6626686099947162,
+            "wilson_lo": 0.4721521169586435
+          },
+          "0.30": {
+            "benchmarks": 100,
+            "flagged": 87,
+            "mean_overlap_leaked": 0.26400000000000007,
+            "recall": 0.87,
+            "wilson_hi": 0.9224290614158575,
+            "wilson_lo": 0.7901947810519012
+          },
+          "0.50": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 0.26026666666666654,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        },
+        "5": {
+          "0.02": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "mean_overlap_leaked": 0.646153846153846,
+            "recall": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 1,
+            "mean_overlap_leaked": 0.6196153846153845,
+            "recall": 0.01,
+            "wilson_hi": 0.0544875247609346,
+            "wilson_lo": 0.0017673865655472645
+          },
+          "0.10": {
+            "benchmarks": 100,
+            "flagged": 86,
+            "mean_overlap_leaked": 0.608153846153846,
+            "recall": 0.86,
+            "wilson_hi": 0.914737342455351,
+            "wilson_lo": 0.7786263961619276
+          },
+          "0.20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 0.6071923076923078,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.30": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 0.6002564102564106,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.50": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 0.5982000000000001,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        },
+        "8": {
+          "0.02": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "mean_overlap_leaked": 0.49347826086956514,
+            "recall": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 1,
+            "mean_overlap_leaked": 0.4626086956521739,
+            "recall": 0.01,
+            "wilson_hi": 0.0544875247609346,
+            "wilson_lo": 0.0017673865655472645
+          },
+          "0.10": {
+            "benchmarks": 100,
+            "flagged": 36,
+            "mean_overlap_leaked": 0.44956521739130423,
+            "recall": 0.36,
+            "wilson_hi": 0.45764780018837914,
+            "wilson_lo": 0.2727107459049014
+          },
+          "0.20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 0.4489999999999998,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.30": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 0.44142028985507237,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.50": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 0.43855652173913034,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        }
+      },
+      "edit_rate": 0.1
+    },
+    "verbatim": {
+      "by_n": {
+        "13": {
+          "0.02": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "mean_overlap_leaked": 1.0,
+            "recall": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 10,
+            "mean_overlap_leaked": 1.0,
+            "recall": 0.1,
+            "wilson_hi": 0.1743673043676654,
+            "wilson_lo": 0.05522854161313613
+          },
+          "0.10": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.30": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.50": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        },
+        "5": {
+          "0.02": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "mean_overlap_leaked": 1.0,
+            "recall": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 13,
+            "mean_overlap_leaked": 1.0,
+            "recall": 0.13,
+            "wilson_hi": 0.20980521894809878,
+            "wilson_lo": 0.07757093858414264
+          },
+          "0.10": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.30": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.50": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        },
+        "8": {
+          "0.02": {
+            "benchmarks": 100,
+            "flagged": 0,
+            "mean_overlap_leaked": 1.0,
+            "recall": 0.0,
+            "wilson_hi": 0.03699480747600191,
+            "wilson_lo": 0.0
+          },
+          "0.05": {
+            "benchmarks": 100,
+            "flagged": 10,
+            "mean_overlap_leaked": 1.0,
+            "recall": 0.1,
+            "wilson_hi": 0.1743673043676654,
+            "wilson_lo": 0.05522854161313613
+          },
+          "0.10": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.20": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.30": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          },
+          "0.50": {
+            "benchmarks": 100,
+            "flagged": 100,
+            "mean_overlap_leaked": 1.0,
+            "recall": 1.0,
+            "wilson_hi": 0.9999999999999999,
+            "wilson_lo": 0.9630051925239981
+          }
+        }
+      },
+      "edit_rate": 0.0
+    }
+  }
+}

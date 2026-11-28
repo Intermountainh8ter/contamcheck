@@ -244,6 +244,30 @@ enum Cmd {
         #[arg(long)]
         out: std::path::PathBuf,
     },
+    /// Model-free leak-share sweep of the n-gram rule: recall per leaked
+    /// share of each seeded Zipf benchmark, verbatim and 0.1 token-rewrite.
+    Leakcurve {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 100)]
+        benchmarks: usize,
+        #[arg(long, default_value_t = 50)]
+        examples: usize,
+        #[arg(long, default_value_t = 30)]
+        tokens: usize,
+        #[arg(long, default_value_t = 20000)]
+        proxy_tokens: usize,
+        #[arg(long, default_value_t = 5000)]
+        vocab: usize,
+        #[arg(long, default_value_t = 200)]
+        bootstrap: usize,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![0.02f64, 0.05, 0.1, 0.2, 0.3, 0.5])]
+        shares: Vec<f64>,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![5usize, 8, 13])]
+        ns: Vec<usize>,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -790,6 +814,41 @@ fn main() -> anyhow::Result<()> {
                 "null_flag_rate_by_n": null_by_n,
                 "never_flag_responder_recall_by_n": never,
                 "params": {"seed": seed, "benchmarks": benchmarks, "examples": examples, "tokens": tokens, "proxy_tokens": proxy_tokens, "vocab": vocab, "bootstrap_iters": bootstrap, "leak_share": leak_share, "ns": ns, "ngram_threshold": Thresholds::default().ngram, "generator": "independent Zipf(s=1) draws; leaked items appended to the proxy verbatim or with each token rewritten by a fresh Zipf draw at the edit rate"},
+                "provenance": {
+                    "started_at": format_utc(started),
+                    "seeds": [seed],
+                    "command": cmd.join(" "),
+                    "hardware": "cpu only, no model",
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded Zipf generator in the component, no external data", "license": "MIT (component code)"}]
+                }
+            });
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            eprintln!("wrote {}", out.display());
+        }
+        Cmd::Leakcurve { seed, benchmarks, examples, tokens, proxy_tokens, vocab, bootstrap, shares, ns, out } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
+            let classes: Vec<(String, f64)> = vec![("verbatim".into(), 0.0), ("light".into(), 0.1)];
+            let base = contamcheck::evasion::Params { seed, benchmarks, examples, tokens, proxy_tokens, vocab, boot_iters: bootstrap, leak_share: 0.0, ns: ns.clone(), classes: vec![] };
+            let res = contamcheck::leakcurve::sweep(&base, &shares, &classes);
+            let mut recall = serde_json::Map::new();
+            for (name, rate) in &classes {
+                let mut by_n = serde_json::Map::new();
+                for (n, per_share) in &res[name] {
+                    let m: serde_json::Map<String, serde_json::Value> = per_share.iter().map(|(k, c)| (k.clone(), serde_json::json!({"recall": c.recall, "flagged": c.flagged, "benchmarks": c.benchmarks, "wilson_lo": c.wilson_lo, "wilson_hi": c.wilson_hi, "mean_overlap_leaked": c.mean_overlap_leaked}))).collect();
+                    by_n.insert(n.to_string(), serde_json::Value::Object(m));
+                }
+                recall.insert(name.clone(), serde_json::json!({"edit_rate": rate, "by_n": by_n}));
+            }
+            let null_by_n: serde_json::Map<String, serde_json::Value> = res["null"].iter().map(|(n, per)| (n.to_string(), serde_json::json!(per.values().next().map(|c| c.recall).unwrap_or(0.0)))).collect();
+            let never: serde_json::Map<String, serde_json::Value> = ns.iter().map(|n| (n.to_string(), serde_json::json!(0.0))).collect();
+            let cmd: Vec<String> = std::env::args().collect();
+            let v = serde_json::json!({
+                "recall_by_leak_share": recall,
+                "null_flag_rate_by_n": null_by_n,
+                "never_flag_responder_recall_by_n": never,
+                "params": {"seed": seed, "benchmarks": benchmarks, "examples": examples, "tokens": tokens, "proxy_tokens": proxy_tokens, "vocab": vocab, "bootstrap_iters": bootstrap, "shares": shares, "ns": ns, "ngram_threshold": Thresholds::default().ngram, "generator": "independent Zipf(s=1) draws; the first round(share*examples) items are appended to the proxy verbatim or with each token rewritten by a fresh Zipf draw at the edit rate"},
                 "provenance": {
                     "started_at": format_utc(started),
                     "seeds": [seed],
