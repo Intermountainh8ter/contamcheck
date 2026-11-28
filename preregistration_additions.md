@@ -67,3 +67,13 @@ Metric: /datedrift/by_n/3/by_shift/0.5/rate. Expected: at most 0.14 (decreases o
 Falsifier: n=3 false-positive rate at shift 0.5 above 0.14 with shift 0 at or below 0.14, or any nonzero flag rate at n=5 or n=13 at any shift.
 
 Run: cargo run --locked -q --release -- datedrift --seed 7 --benchmarks 100 --examples 50 --out results/826-datedrift.json (shifts 0,0.1,0.25,0.5,1.0; n sweep 3,5,13).
+
+## 2026-11-28T05:41:07Z minkfpr proposal:20dce8f35ccfdff891d19e13994a5a5554505047976e7d9bf01d75c9460966b3
+
+Hypothesis: on seeded simulated token log-probabilities (200 calibration and 200 clean examples per trial, 100 trials, 64 tokens per example, Min-K% with k=0.2), a Min-K% threshold calibrated at target false positive rate 0.05 gives a clean-split false positive rate of at most 0.08 when the clean bank has the same distribution (drift 0), and a rate of at least 0.15 when the clean bank's mean token log-probability is shifted by 0.25 per-token standard deviations toward higher likelihood.
+
+Metric: /false_positive/by_score/mink/by_drift/0.25/rate. Expected: at least 0.15 (and at most 0.08 at drift 0).
+
+Falsifier: Min-K% clean-split false positive rate at drift 0.25 below 0.15, or above 0.08 at drift 0, on the seeded set.
+
+Run: cargo run --locked -q --release -- minkfpr --seed 7 --trials 100 --examples 200 --tokens 64 --target-fpr 0.05 --drifts 0,0.1,0.25,0.5 --out results/830-minkfpr.json

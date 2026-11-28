@@ -13,6 +13,7 @@ pub mod boilerplate_share;
 pub mod datedrift;
 pub mod evasion;
 pub mod leakcurve;
+pub mod minkfpr;
 pub mod nullcal;
 pub mod paracurve;
 

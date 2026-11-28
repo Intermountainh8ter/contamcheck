@@ -1,0 +1,135 @@
+{
+  "false_positive": {
+    "by_score": {
+      "always_flag": {
+        "by_drift": {
+          "0": {
+            "flagged": 20000,
+            "n": 20000,
+            "rate": 1.0,
+            "wilson_hi": 1.0,
+            "wilson_lo": 0.9998079568876411
+          },
+          "0.1": {
+            "flagged": 20000,
+            "n": 20000,
+            "rate": 1.0,
+            "wilson_hi": 1.0,
+            "wilson_lo": 0.9998079568876411
+          },
+          "0.25": {
+            "flagged": 20000,
+            "n": 20000,
+            "rate": 1.0,
+            "wilson_hi": 1.0,
+            "wilson_lo": 0.9998079568876411
+          },
+          "0.5": {
+            "flagged": 20000,
+            "n": 20000,
+            "rate": 1.0,
+            "wilson_hi": 1.0,
+            "wilson_lo": 0.9998079568876411
+          }
+        }
+      },
+      "mink": {
+        "by_drift": {
+          "0": {
+            "flagged": 1068,
+            "n": 20000,
+            "rate": 0.0534,
+            "wilson_hi": 0.056602629560873904,
+            "wilson_lo": 0.050368903347085145
+          },
+          "0.1": {
+            "flagged": 1622,
+            "n": 20000,
+            "rate": 0.0811,
+            "wilson_hi": 0.08496436813676556,
+            "wilson_lo": 0.07739652558276883
+          },
+          "0.25": {
+            "flagged": 2763,
+            "n": 20000,
+            "rate": 0.13815,
+            "wilson_hi": 0.14300178742485514,
+            "wilson_lo": 0.13343719417555905
+          },
+          "0.5": {
+            "flagged": 5690,
+            "n": 20000,
+            "rate": 0.2845,
+            "wilson_hi": 0.29079390163881697,
+            "wilson_lo": 0.2782888689426098
+          }
+        }
+      },
+      "zlib": {
+        "by_drift": {
+          "0": {
+            "flagged": 1067,
+            "n": 20000,
+            "rate": 0.05335,
+            "wilson_hi": 0.05655126320083522,
+            "wilson_lo": 0.050320288911435064
+          },
+          "0.1": {
+            "flagged": 1514,
+            "n": 20000,
+            "rate": 0.0757,
+            "wilson_hi": 0.0794480629651403,
+            "wilson_lo": 0.07211490482000756
+          },
+          "0.25": {
+            "flagged": 2292,
+            "n": 20000,
+            "rate": 0.1146,
+            "wilson_hi": 0.11908892969336221,
+            "wilson_lo": 0.11025909713764409
+          },
+          "0.5": {
+            "flagged": 4034,
+            "n": 20000,
+            "rate": 0.2017,
+            "wilson_hi": 0.2073183572822994,
+            "wilson_lo": 0.19619621563853398
+          }
+        }
+      }
+    }
+  },
+  "params": {
+    "drifts": [
+      0.0,
+      0.1,
+      0.25,
+      0.5
+    ],
+    "example_sd": 0.5,
+    "examples": 200,
+    "generator": "per-token log-prob = mean + example effect + token noise (normal); drift shifts the clean split by drift times the per-token marginal sd; zlib score is mean log-prob over an independent uniform(0.5,1.5) complexity factor (stand-in, not real zlib); threshold is the calibration-split quantile at the target rate; every flag on a clean example is a false positive; always_flag is the degenerate audit",
+    "k": 0.2,
+    "mean_logprob": -3.0,
+    "seed": 7,
+    "target_fpr": 0.05,
+    "token_sd": 1.0,
+    "tokens": 64,
+    "trials": 100
+  },
+  "provenance": {
+    "command": "target/release/contamcheck minkfpr --seed 7 --trials 100 --examples 200 --tokens 64 --target-fpr 0.05 --drifts 0,0.1,0.25,0.5 --out results/830-minkfpr.json",
+    "data_sources": [
+      {
+        "license": "MIT (component code)",
+        "url": "synthetic: seeded generator in the component, no external data"
+      }
+    ],
+    "hardware": "cpu only, no model",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T05:41:49Z",
+    "wall_s": 0.363975918
+  }
+}

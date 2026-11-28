@@ -371,6 +371,26 @@ enum Cmd {
         #[arg(long)]
         out: std::path::PathBuf,
     },
+    /// Clean-split false-positive rate of Min-K% and zlib-ratio scores at a
+    /// threshold fixed on a calibration split, under swept drift.
+    Minkfpr {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 100)]
+        trials: usize,
+        #[arg(long, default_value_t = 200)]
+        examples: usize,
+        #[arg(long, default_value_t = 64)]
+        tokens: usize,
+        #[arg(long, default_value_t = 0.2)]
+        k: f64,
+        #[arg(long, default_value_t = 0.05)]
+        target_fpr: f64,
+        #[arg(long, value_delimiter = ',', default_values_t = vec![0.0f64, 0.1, 0.25, 0.5])]
+        drifts: Vec<f64>,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -1015,6 +1035,32 @@ fn main() -> anyhow::Result<()> {
                     "hardware": "cpu only, no model",
                     "wall_s": t0.elapsed().as_secs_f64(),
                     "data_sources": [{"url": "synthetic: seeded Zipf generator in the component, no external data", "license": "MIT (component code)"}]
+                }
+            });
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            eprintln!("wrote {}", out.display());
+        }
+        Cmd::Minkfpr { seed, trials, examples, tokens, k, target_fpr, drifts, out } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs();
+            let p = contamcheck::minkfpr::Params { seed, trials, examples, tokens, k, target_fpr };
+            let res = contamcheck::minkfpr::sweep(&p, &drifts);
+            let mut by_score = serde_json::Map::new();
+            for (s, per_drift) in &res {
+                let m: serde_json::Map<String, serde_json::Value> = per_drift.iter().map(|(d, c)| (d.clone(), serde_json::json!({"rate": c.rate, "flagged": c.flagged, "n": c.n, "wilson_lo": c.wilson_lo, "wilson_hi": c.wilson_hi}))).collect();
+                by_score.insert(s.clone(), serde_json::json!({"by_drift": m}));
+            }
+            let cmd: Vec<String> = std::env::args().collect();
+            let v = serde_json::json!({
+                "false_positive": {"by_score": by_score},
+                "params": {"seed": seed, "trials": trials, "examples": examples, "tokens": tokens, "k": k, "target_fpr": target_fpr, "drifts": drifts, "example_sd": contamcheck::minkfpr::EXAMPLE_SD, "token_sd": contamcheck::minkfpr::TOKEN_SD, "mean_logprob": contamcheck::minkfpr::MEAN_LOGPROB, "generator": "per-token log-prob = mean + example effect + token noise (normal); drift shifts the clean split by drift times the per-token marginal sd; zlib score is mean log-prob over an independent uniform(0.5,1.5) complexity factor (stand-in, not real zlib); threshold is the calibration-split quantile at the target rate; every flag on a clean example is a false positive; always_flag is the degenerate audit"},
+                "provenance": {
+                    "started_at": format_utc(started),
+                    "seeds": [seed],
+                    "command": cmd.join(" "),
+                    "hardware": "cpu only, no model",
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded generator in the component, no external data", "license": "MIT (component code)"}]
                 }
             });
             std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
